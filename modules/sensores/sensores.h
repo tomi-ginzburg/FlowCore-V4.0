@@ -8,8 +8,8 @@
 #define PT100_2         1
 #define LOOP_CORRIENTE  2
 
-#define CICLOS_PT100_1  6
-#define CICLOS_PT100_2  6
+#define CICLOS_PT100_1  7
+#define CICLOS_PT100_2  7
 #define CICLOS_LOOP_I   6
 
 #define VALOR_ERROR_SENSOR  1000

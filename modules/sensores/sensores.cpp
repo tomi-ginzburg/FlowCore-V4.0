@@ -29,7 +29,7 @@
 
 #define RESOLUCION      16
 
-#define CANT_MUESTRAS   5
+#define CANT_MUESTRAS   6
 #define CANT_MEDICIONES_ERRADAS 5
 
 #define RREF_RTD        500
@@ -201,101 +201,95 @@ void actualizarSensores(){
     valorADC = (msb << 8) | lsb;
     
     if (contadorCiclos == 0){
-        cambiarConfiguracionesADC();
         muestrasPromediadas = 0;
     } 
-    
-    else if (contadorCiclos > 0){
+ 
+    // INTERPRETACION Y GUARDADO DE DATOS
+    static int contadorMedicionesErradas[CANT_SENSORES] = {0, 0, 0};
 
-        // INTERPRETACION Y GUARDADO DE DATOS
-        static int contadorMedicionesErradas[CANT_SENSORES] = {0, 0, 0};
-
-        // Si tengo un error de medicion, no lo mando
-        // Cuento a tener varios errores antes de mandar una medicion de error
-        // Mientras tanto mantengo el valor anterior
-        if (valorADC > 32750 || valorADC < 50){
-            contadorMedicionesErradas[estadoLecturaSensores]++;
-            if (contadorMedicionesErradas[estadoLecturaSensores]++ > CANT_MEDICIONES_ERRADAS){
-                valorSensores[estadoLecturaSensores] = VALOR_ERROR_SENSOR;
-            }
-        } 
-        
-        else {
-            contadorMedicionesErradas[estadoLecturaSensores] = 0;
-            static float aux = 0;
-
-            switch(estadoLecturaSensores){
-                case SENSOR_1:
-                    nuevaLectura = conversionTemperatura(conversionResistencia(valorADC, tecnologiaSensor[PT100_1]), tecnologiaSensor[PT100_1]);
-                    // Serial.print("s1: ");
-                    // Serial.println(nuevaLectura);
-
-                    // MEDICIONES ASINCRONICAS
-                    #if (TEMPORIZACION == ASINCRONICO)
-                        mediciones[PT100_1][muestrasPromediadas] = nuevaLectura;
-                        aux = 0;
-                        for (int i=0; i < CANT_MUESTRAS; i++){
-                            aux += mediciones[PT100_1][i];
-                        }
-                        valorSensores[PT100_1] = aux / CANT_MUESTRAS;
-                    #endif
-                    // MEDICIONES SINCRONICAS
-                    #if (TEMPORIZACION == SINCRONICO)
-                        valorSensores[PT100_1] = (valorSensores[PT100_1]*(muestrasPromediadas) + nuevaLectura) / (muestrasPromediadas+1);
-                    #endif
-
-                    break;
-                case SENSOR_2:
-                    nuevaLectura = conversionTemperatura(conversionResistencia(valorADC, tecnologiaSensor[PT100_2]), tecnologiaSensor[PT100_2]);
-                    // Serial.print("s2: ");
-                    // Serial.println(nuevaLectura);
-                    
-                    // MEDICIONES ASINCRONICAS
-                    #if (TEMPORIZACION == ASINCRONICO)
-                        mediciones[PT100_2][muestrasPromediadas] = nuevaLectura;
-                        aux = 0;
-                        for (int i=0; i < CANT_MUESTRAS; i++){
-                            aux += mediciones[PT100_2][i];
-                        }
-                        valorSensores[PT100_2] = aux / CANT_MUESTRAS;
-                    #endif
-                    // MEDICIONES SINCRONICAS
-                    #if (TEMPORIZACION == SINCRONICO)
-                        valorSensores[PT100_2] = (valorSensores[PT100_2]*(muestrasPromediadas) + nuevaLectura) / (muestrasPromediadas+1);
-                    #endif
-
-                    break;
-
-                case SENSOR_3:
-                    nuevaLectura = (valorADC*2048.0*2)/(pow(2,16)*RREF_4_20);
-                    // Serial.print("s3: ");
-                    // Serial.println(nuevaLectura);
-
-                    // MEDICIONES ASINCRONICAS
-                    #if (TEMPORIZACION == ASINCRONICO)
-                        mediciones[LOOP_CORRIENTE][muestrasPromediadas] = nuevaLectura;
-                        aux = 0;
-                        for (int i=0; i < CANT_MUESTRAS; i++){
-                            aux += mediciones[LOOP_CORRIENTE][i];
-                        }
-                        valorSensores[LOOP_CORRIENTE] = aux / (CANT_MUESTRAS);
-                    #endif
-                    // MEDICIONES SINCRONICAS
-                    #if (TEMPORIZACION == SINCRONICO)
-                        valorSensores[LOOP_CORRIENTE] = (valorSensores[LOOP_CORRIENTE]*(muestrasPromediadas) + nuevaLectura) / (muestrasPromediadas+1);
-                    #endif
-                    
-                    break;
-                
-            }
+    // Si tengo un error de medicion, no lo mando
+    // Cuento a tener varios errores antes de mandar una medicion de error
+    // Mientras tanto mantengo el valor anterior
+    if (valorADC > 32750 || valorADC < 50){
+        contadorMedicionesErradas[estadoLecturaSensores]++;
+        if (contadorMedicionesErradas[estadoLecturaSensores]++ > CANT_MEDICIONES_ERRADAS){
+            valorSensores[estadoLecturaSensores] = VALOR_ERROR_SENSOR;
         }
-        
-        
-        
-        muestrasPromediadas++;  
-             
+    } 
+    
+    else {
+        contadorMedicionesErradas[estadoLecturaSensores] = 0;
+        static float aux = 0;
+
+        switch(estadoLecturaSensores){
+            case SENSOR_1:
+                nuevaLectura = conversionTemperatura(conversionResistencia(valorADC, tecnologiaSensor[PT100_1]), tecnologiaSensor[PT100_1]);
+                // Serial.print("s1: ");
+                // Serial.println(nuevaLectura);
+
+                // MEDICIONES ASINCRONICAS
+                #if (TEMPORIZACION == ASINCRONICO)
+                    mediciones[PT100_1][muestrasPromediadas] = nuevaLectura;
+                    aux = 0;
+                    for (int i=0; i < CICLOS_PT100_1; i++){
+                        aux += mediciones[PT100_1][i];
+                    }
+                    valorSensores[PT100_1] = aux / CICLOS_PT100_1;
+                #endif
+                // MEDICIONES SINCRONICAS
+                #if (TEMPORIZACION == SINCRONICO)
+                    valorSensores[PT100_1] = (valorSensores[PT100_1]*(muestrasPromediadas) + nuevaLectura) / (muestrasPromediadas+1);
+                #endif
+
+                break;
+            case SENSOR_2:
+                nuevaLectura = conversionTemperatura(conversionResistencia(valorADC, tecnologiaSensor[PT100_2]), tecnologiaSensor[PT100_2]);
+                // Serial.print("s2: ");
+                // Serial.println(nuevaLectura);
+                
+                // MEDICIONES ASINCRONICAS
+                #if (TEMPORIZACION == ASINCRONICO)
+                    mediciones[PT100_2][muestrasPromediadas] = nuevaLectura;
+                    aux = 0;
+                    for (int i=0; i < CICLOS_PT100_2; i++){
+                        aux += mediciones[PT100_2][i];
+                    }
+                    valorSensores[PT100_2] = aux / CICLOS_PT100_2;
+                #endif
+                // MEDICIONES SINCRONICAS
+                #if (TEMPORIZACION == SINCRONICO)
+                    valorSensores[PT100_2] = (valorSensores[PT100_2]*(muestrasPromediadas) + nuevaLectura) / (muestrasPromediadas+1);
+                #endif
+
+                break;
+
+            case SENSOR_3:
+                nuevaLectura = (valorADC*2048.0*2)/(pow(2,16)*RREF_4_20);
+                // Serial.print("s3: ");
+                // Serial.println(nuevaLectura);
+
+                // MEDICIONES ASINCRONICAS
+                #if (TEMPORIZACION == ASINCRONICO)
+                    mediciones[LOOP_CORRIENTE][muestrasPromediadas] = nuevaLectura;
+                    aux = 0;
+                    for (int i=0; i < CICLOS_LOOP_I; i++){
+                        aux += mediciones[LOOP_CORRIENTE][i];
+                    }
+                    valorSensores[LOOP_CORRIENTE] = aux / (CICLOS_LOOP_I);
+                #endif
+                // MEDICIONES SINCRONICAS
+                #if (TEMPORIZACION == SINCRONICO)
+                    valorSensores[LOOP_CORRIENTE] = (valorSensores[LOOP_CORRIENTE]*(muestrasPromediadas) + nuevaLectura) / (muestrasPromediadas+1);
+                #endif
+                
+                break;
+            
+        }
     }
     
+    
+    
+    muestrasPromediadas++;      
     contadorCiclos++; 
 
     actualizarEstadoSensores();
@@ -397,18 +391,21 @@ void actualizarEstadoSensores(){
             if (contadorCiclos == CICLOS_PT100_1){
                 estadoLecturaSensores = SENSOR_2;
                 contadorCiclos = 0;
+                cambiarConfiguracionesADC();
             }
             break;
         case SENSOR_2:
             if (contadorCiclos == CICLOS_PT100_2){
                 estadoLecturaSensores = SENSOR_3;
                 contadorCiclos = 0;
+                cambiarConfiguracionesADC();
             }
             break;
         case SENSOR_3:  
             if (contadorCiclos == CICLOS_LOOP_I){
                 estadoLecturaSensores = SENSOR_1;
                 contadorCiclos = 0;
+                cambiarConfiguracionesADC();
             }
             break;
     }
