@@ -40,11 +40,11 @@ void printeoValoresSensores(void * parameters){
 
         // PRINTEO LOS VALORES
         Serial.print("\n");
-        Serial.print("Sensor 1: ");
+        Serial.print("S1: ");
         Serial.println(valorSensores_[PT100_1]);
-        Serial.print("Sensor 2: ");
+        Serial.print("S2: ");
         Serial.println(valorSensores_[PT100_2]);
-        Serial.print("Sensor 3: ");
+        Serial.print("S3: ");
         Serial.println(valorSensores_[LOOP_CORRIENTE]);
     }
     vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -55,7 +55,7 @@ void printeoValoresSensores(void * parameters){
     Tomo muestras de las oscilaciones entre dos instantes de control 
     Calculo la media y varianza, y detecta outliers
 */
-#define CANT_MUESTRAS 1000
+#define CANT_MUESTRAS 10000
 #define CANT_MUESTRAS_INICIALES 3
 #define MARGEN_TEMPERATURA      1.0   
 #define MARGEN_PRESION          1.0
@@ -306,12 +306,12 @@ void IRAM_ATTR isr_mediciones() {
 }
 
 void setup(){
-    Serial.begin(115200);
+    Serial.begin(250000);
 
-    pinMode(15,OUTPUT);
-    digitalWrite(15,HIGH);
-    pinMode(25,OUTPUT);
-    digitalWrite(25,HIGH);
+    // pinMode(15,OUTPUT);
+    // digitalWrite(15,HIGH);
+    // pinMode(25,OUTPUT);
+    // digitalWrite(25,HIGH);
     inicializarSensores();
 
     valorSensores_ = obtenerValorSensores();
@@ -322,7 +322,7 @@ void setup(){
     countSemaphore = xSemaphoreCreateCounting(CICLOS_PT100_1+CICLOS_PT100_2+CICLOS_LOOP_I+1,CICLOS_PT100_1+CICLOS_PT100_2+CICLOS_LOOP_I+1);
 
     isrSemaphore = xSemaphoreCreateBinary();
-    attachInterrupt(digitalPinToInterrupt(39), isr_mediciones, FALLING);
+    attachInterrupt(digitalPinToInterrupt(2), isr_mediciones, FALLING);
 
 
     xTaskCreate(cicloSensores, "Task 1", 1000, NULL, 1, NULL);
@@ -330,13 +330,13 @@ void setup(){
     // De los siguientes conjuntos descomentar uno
 
     // 1. Vista de funcionamiento
-    // xTaskCreate(printeoValoresSensores, "Task 2", 1000, NULL, 1, NULL);
+    xTaskCreate(printeoValoresSensores, "Task 2", 1000, NULL, 1, NULL);
         
     // 2. Metricas con los sensores en condiciones estables
     // xTaskCreate(medirOscilacionLectura, "Task 3", 4000, NULL, 1, NULL);
 
     // 3. Metrica para cambio de temperatura
-    xTaskCreate(medirTiempoCambioTemperatura, "Task 5", 2000, NULL, 1, NULL);
+    // xTaskCreate(medirTiempoCambioTemperatura, "Task 5", 2000, NULL, 1, NULL);
 }
 
 void loop(){

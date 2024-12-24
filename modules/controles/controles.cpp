@@ -11,11 +11,11 @@
 
 // =====[Declaracion de defines privados]============
 
-#define LIMITE_INF_PRESION      5
-#define LIMITE_SUP_PRESION      19
-#define LIMITE_INF_TEMPERATURA  22
-#define LIMITE_SUP_TEMPERATURA  33
-#define CANT_RESISTENCIAS       4
+#define LIMITE_INF_PRESION      1
+#define LIMITE_SUP_PRESION      25
+#define LIMITE_INF_TEMPERATURA  5
+#define LIMITE_SUP_TEMPERATURA  90
+#define CANT_RESISTENCIAS       2
 
 // Tiempos para verificar falla
 #define TIEMPO_BOMBA_CAL_MS         10000
@@ -35,7 +35,7 @@
 // ESTO VA A SER PARTE DE LAS CONFIGURACIONES
 
 uint64_t tiempoDuracionMantenimiento = 5000;//5000;
-uint64_t tiempoEsperaMantenimiento = 30000;//2592000000;
+uint64_t tiempoEsperaMantenimiento = 2592000000;
 
 //---------------------------------------------------
 
@@ -110,7 +110,6 @@ void actualizarControles(){
     }
 }
 
-
 void solicitarPurgarBomba(int bomba){
     if (bomba == BOMBA_CAL ){
         flagsPurga[0] = !flagsPurga[0];
@@ -118,6 +117,15 @@ void solicitarPurgarBomba(int bomba){
     else if (bomba == BOMBA_ACS){
         flagsPurga[1] = !flagsPurga[1];
     }    
+}
+
+void solicitarDiagnosticoEtapa(int etapa, bool encendido){
+    if (encendido){
+        solicitarActivarRele(relesDeResistencias[etapa]);
+    }
+    else {
+        solicitarDesactivarRele(relesDeResistencias[etapa]);
+    }
 }
 
 const estadoControl_t* obtenerEstadoControl(){
@@ -187,7 +195,7 @@ void actualizarEstadoControl(){
             break;
         case ENCENDIDO_IDLE:
             // Si se activa el flujostato del agua sanitaria y esta activo el modo ACS, cambia de estado a ENCENDIDO_ACS 
-            if (estadoEntradasControl[FLOW_SW_ACS] == HIGH && acsOn == true){
+            if (estadoEntradasControl[FLOW_SW_ACS] == LOW && acsOn == true){
                 // Apaga la bomba de calefaccion
                 if (etapasControl[ETAPA_5] == HIGH && contadorMantenimiento > tiempoDuracionMantenimiento){
                     solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
@@ -200,7 +208,7 @@ void actualizarEstadoControl(){
         case ENCENDIDO_ACS:
             
             // Si se desactiva el flujostato del agua sanitaria cambia de estado a ENCENDIDO_IDLE 
-            if (estadoEntradasControl[FLOW_SW_ACS] == LOW){
+            if (estadoEntradasControl[FLOW_SW_ACS] == HIGH){
                 // Apaga la bomba de agua caliente
                 solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
                 estadoControl = ENCENDIDO_IDLE;  
@@ -227,12 +235,12 @@ void actualizarEstadoControl(){
             }
 
             // Si se pide ACS se controlan las resisitencias
-            if (estadoEntradasControl[FLOW_SW_ACS] == HIGH && supervisionOn == false){
+            if (estadoEntradasControl[FLOW_SW_ACS] == LOW && supervisionOn == false){
                 supervisionOn = true;
             } 
 
             // Si se deja de pedir ACS se apagan las resistencias
-            else if (estadoEntradasControl[FLOW_SW_ACS] == LOW && supervisionOn == true){
+            else if (estadoEntradasControl[FLOW_SW_ACS] == HIGH && supervisionOn == true){
                 supervisionOn = false;
                 for (int i=0; i < CANT_RESISTENCIAS; i++){
                     solicitarDesactivarRele(i);
@@ -245,6 +253,13 @@ void actualizarEstadoControl(){
         case DIAGNOSTICO: 
             if (configuracionesControl->diagnosticoOn == false){
                 estadoControl = APAGADO;
+                for (int i=0; i < CANT_RESISTENCIAS; i++){
+                    solicitarDesactivarRele(i);
+                }
+                solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
+                solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
+                flagsPurga[0] = false;
+                flagsPurga[1] = false;
             }
             break;
         case ALARMA: break;
@@ -311,7 +326,7 @@ void verificarFalla(){
     static int contadorFallaTempAlta = 0, contadorFallaTempBaja = 0, contadorFallaPresionAlta = 0, contadorFallaPresionBaja = 0;
     
     // Termostato de seguridad
-    if (estadoEntradasControl[TERMOSTATO_SEG] == LOW
+    if (estadoEntradasControl[TERMOSTATO_SEG] == HIGH
         && obtenerPrioridadAlarma(TERMOSTATO_SEGURIDAD) < obtenerPrioridadAlarma(causaAlarma)){
 
         causaAlarma = TERMOSTATO_SEGURIDAD;
@@ -386,7 +401,7 @@ void verificarFalla(){
     }
 
     // Apagado de bombas, si hay flujo pero estan ambas apagadas
-    if (estadoEntradasControl[FLOW_SW_BOMBAS] == HIGH && tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] >= TIEMPO_APAGADO_BOMBAS_MS
+    if (estadoEntradasControl[FLOW_SW_BOMBAS] == LOW && tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] >= TIEMPO_APAGADO_BOMBAS_MS
         &&  etapasControl[ETAPA_5] == LOW && tiempoApagadoEtapasControl[ETAPA_5] >= TIEMPO_APAGADO_BOMBAS_MS
         &&  etapasControl[ETAPA_6] == LOW && tiempoApagadoEtapasControl[ETAPA_6] >= TIEMPO_APAGADO_BOMBAS_MS){
         
@@ -444,7 +459,7 @@ void verificarFalla(){
     // Si no hay flujo en ninguna bomba, pero la bomba de calefaccion esta encendida, hay fallo en la bomba de calefaccion 
     // Para ello hay que ver que tanto la bomba este prendida hace mas de TIEMPO_BOMBA_CAL_MS
     // Y el ultimo cambio de la entrada del flow switch sea hace mas de TIEMPO_BOMBA_CAL_MS hacia estado bajo
-    if (estadoEntradasControl[FLOW_SW_BOMBAS] == LOW && tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] >= TIEMPO_BOMBA_CAL_MS
+    if (estadoEntradasControl[FLOW_SW_BOMBAS] == HIGH && tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] >= TIEMPO_BOMBA_CAL_MS
         &&  etapasControl[ETAPA_5] == HIGH && tiempoEncendidoEtapasControl[ETAPA_5] >= TIEMPO_BOMBA_CAL_MS
         && causaAlarma != BOMBA_CALEFACCION_ON){
 
@@ -474,7 +489,7 @@ void verificarFalla(){
 
     // Si no hay flujo en ninguna bomba, pero la bomba de agua caliente esta encendida, hay fallo en la bomba de agua caliente 
     // Mismas condiciones que la bomba de calefaccion pero con tiempo TIEMPO_BOMBA_ACS_MS
-    if (estadoEntradasControl[FLOW_SW_BOMBAS] == LOW && tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] >= TIEMPO_BOMBA_ACS_MS
+    if (estadoEntradasControl[FLOW_SW_BOMBAS] == HIGH && tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] >= TIEMPO_BOMBA_ACS_MS
         &&  etapasControl[ETAPA_6] == HIGH && tiempoEncendidoEtapasControl[ETAPA_6] >= TIEMPO_BOMBA_ACS_MS
         && causaAlarma != BOMBA_AGUA_CALIENTE_ON){
 
@@ -570,12 +585,12 @@ void actualizarEtapasSalida(){
                 // Si el estado acaba de cambiar, no abro la bomba de calefaccion para poder detectar si se quedo pegada la bomba de agua caleinte
                 // Si se cierra el termostato ambiente (pide calefaccion) y la bomba de calefaccion esta cerrada, se activa
                 // if (estadoControl == estadoControlAnterior){
-                    if (estadoEntradasControl[TERMOSTATO_AMB] == HIGH && etapasControl[ETAPA_5] == LOW){
-                        solicitarActivarRele(ETAPA_5, true, TIEMPO_BOMBA_CAL_MS);
-                    } 
+                if (estadoEntradasControl[TERMOSTATO_AMB] == LOW && etapasControl[ETAPA_5] == LOW){
+                    solicitarActivarRele(ETAPA_5, true, TIEMPO_BOMBA_CAL_MS);
+                } 
                 // }
                 // Si se abre el termostato ambiente y la bomba de calefaccion esta circulando, se apaga
-                if (estadoEntradasControl[TERMOSTATO_AMB] == LOW && etapasControl[ETAPA_5] == HIGH && contadorMantenimiento > tiempoDuracionMantenimiento){
+                if (estadoEntradasControl[TERMOSTATO_AMB] == HIGH && etapasControl[ETAPA_5] == HIGH && contadorMantenimiento > tiempoDuracionMantenimiento){
                     
                     solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
                 }
@@ -740,15 +755,21 @@ void actualizarMantenimiento(){
 }
 
 void purgarBomba(int bomba){
-    static uint64_t contadorEspera = 0;
+    static uint64_t contadorEspera[2] = {0,0};
     if (bomba != BOMBA_CAL && bomba != BOMBA_ACS){
         return;
     }
 
+    if (bomba == BOMBA_CAL){
+        contador = 0;
+    } else {
+        contador = 1;
+    }
+
     // Si la bomba esta apagada y el contador esta en 0, activo la bomba durante TIEMPO_PURGA_ON con apagado automatico,
     // e inicio un contador en el tiempo de encendido mas apagado
-    if (etapasControl[bomba] == LOW && contadorEspera == 0){
+    if (etapasControl[bomba] == LOW && contadorEspera[contador] == 0){
         solicitarActivarRele(bomba,true,TIEMPO_PURGA_ON,true);
-        contarMs(&contadorEspera,TIEMPO_PURGA_OFF + TIEMPO_PURGA_ON, LOW);
+        contarMs(&contadorEspera[contador],TIEMPO_PURGA_OFF + TIEMPO_PURGA_ON, LOW);
     }
 }

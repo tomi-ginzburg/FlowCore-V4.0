@@ -4,10 +4,10 @@
 
 // =====[Declaracion de defines privados]============
 
-#define ENTRADA_TERMOSTATO_SEG  36
-#define ENTRADA_TERMOSTATO_AMB  35
-#define ENTRADA_FLOW_SW_BOMBAS  33
-#define ENTRADA_FLOW_SW_ACS     34
+#define ENTRADA_TERMOSTATO_SEG  10
+#define ENTRADA_TERMOSTATO_AMB  38
+#define ENTRADA_FLOW_SW_BOMBAS  47
+#define ENTRADA_FLOW_SW_ACS     48
 
 // =====[Declaracion de tipos de datos privados]=====
 

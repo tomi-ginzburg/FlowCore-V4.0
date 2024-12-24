@@ -4,13 +4,13 @@
 
 // =====[Declaracion de defines privados]============
 
-#define RELE_ETAPA_1 	  4
-#define RELE_ETAPA_2    5
-#define RELE_ETAPA_3    22
-#define RELE_ETAPA_4    17
-#define RELE_ETAPA_5    21
-#define RELE_ETAPA_6    32
-#define RELE_ETAPA_7    -1
+#define RELE_ETAPA_1 	  15
+#define RELE_ETAPA_2    16
+#define RELE_ETAPA_3    17
+#define RELE_ETAPA_4    18
+#define RELE_ETAPA_5    6
+#define RELE_ETAPA_6    5
+#define RELE_ETAPA_7    4
 
 // =====[Declaracion de tipos de datos privados]=====
 
@@ -49,12 +49,12 @@ void inicializarReles(){
 	}
     
 	// El rele de emergencia que conecta Vcc a tierra lo dejo en estado de alta impedancia
-	// pinMode(pinesReles[CANT_ETAPAS-1], INPUT);
-	// estadoEtapas[CANT_ETAPAS-1] = false;
-  // tiempoEncendidoEtapas[CANT_ETAPAS-1] = 0;
-  // limiteEncendidoEtapas[CANT_ETAPAS-1] = 0;
-  // tiempoApagadoEtapas[CANT_ETAPAS-1] = 0;
-  // limiteApagadoEtapas[CANT_ETAPAS-1] = 0;
+	pinMode(pinesReles[CANT_ETAPAS-1], INPUT);
+	estadoEtapas[CANT_ETAPAS-1] = false;
+  tiempoEncendidoEtapas[CANT_ETAPAS-1] = 0;
+  limiteEncendidoEtapas[CANT_ETAPAS-1] = 0;
+  tiempoApagadoEtapas[CANT_ETAPAS-1] = 0;
+  limiteApagadoEtapas[CANT_ETAPAS-1] = 0;
 }
 
 void actualizarReles(){
@@ -137,14 +137,14 @@ void desactivarEtapa(int numeroRele, bool contarTiempo, int64_t tiempoLimite){
 }
 
 void forzarFalla(){
-  // pinMode(pinesReles[CANT_ETAPAS-1], OUTPUT);
-  // digitalWrite(pinesReles[CANT_ETAPAS-1], LOW);
-  // estadoEtapas[CANT_ETAPAS-1] = true;
+  pinMode(pinesReles[CANT_ETAPAS-1], OUTPUT);
+  digitalWrite(pinesReles[CANT_ETAPAS-1], LOW);
+  estadoEtapas[CANT_ETAPAS-1] = true;
 }
 
 void cortarFalla(){
-  // pinMode(pinesReles[CANT_ETAPAS-1], INPUT);
-	// estadoEtapas[CANT_ETAPAS-1] = false;
+  pinMode(pinesReles[CANT_ETAPAS-1], INPUT);
+	estadoEtapas[CANT_ETAPAS-1] = false;
 }
 
 const bool* obtenerEstadoEtapas(){

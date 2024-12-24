@@ -3,7 +3,6 @@
 
 
 // =====[Declaracion de defines publicos]============
-
 #define CANT_BOMBAS 2
 
 #define BOMBA_CAL   4
@@ -46,6 +45,8 @@ void inicializarControles();
 void actualizarControles();
 
 void solicitarPurgarBomba(int bomba);
+
+void solicitarDiagnosticoEtapa(int etapa, bool encendido);
 
 const estadoControl_t* obtenerEstadoControl();
 

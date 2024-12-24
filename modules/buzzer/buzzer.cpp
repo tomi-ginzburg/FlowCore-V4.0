@@ -5,7 +5,7 @@
 
 // =====[Declaracion de defines privados]============
 
-#define BUZZER              16
+#define BUZZER              7
 #define FRECUENCIA          2500
 #define TIEMPO_ALARMA_MS    1000 
 #define TIEMPO_BOCINA_MS    40

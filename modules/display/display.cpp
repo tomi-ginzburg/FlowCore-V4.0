@@ -7,6 +7,9 @@
 
 #include <lvgl.h>
 #include <TFT_eSPI.h>
+// #include "..\ui\ui.h"
+// // #include "..\ui\ui.c"
+
 #include <ui.h>
 
 // =====[Declaracion de defines privados]============
@@ -45,6 +48,7 @@ void inicializarValoresPantallaPrincipal();
 void inicializarValoresConfiguracionesUsuario();
 void inicializarValoresConfiguracionesAvanzadas();
 void inicializarValoresAlarmas();
+void inicializarValoresDiagnostico();
 
 // Funciones para la actualizacion de los widgets de cada pantalla
 void actualizarValores();
@@ -72,8 +76,8 @@ void inicializarDisplay(){
     lv_init();
 
     tft.begin();
-    spix = tft.getSPIinstance();
-    tft.setRotation(3);
+    // spix = tft.getSPIinstance();
+    tft.setRotation(1);
 
     // sprite.createSprite(200, 200);
     // Serial.print("ANCHO SPRITE: ");
@@ -110,7 +114,7 @@ void inicializarDisplay(){
 void actualizarDisplay(int tiempoRefresco_ms){
   static int contador = 1;
   
-  if (contador < 1000/tiempoRefresco_ms){
+  if (contador < 100/tiempoRefresco_ms){
     contador++;
   } else {
     actualizarValores();
@@ -196,6 +200,7 @@ void inicializarValores(){
   inicializarValoresConfiguracionesUsuario();
   inicializarValoresConfiguracionesAvanzadas();
   inicializarValoresAlarmas();
+  inicializarValoresDiagnostico();
   
 }
 
@@ -234,6 +239,21 @@ void inicializarValoresAlarmas(){
 
 }
 
+void inicializarValoresDiagnostico(){
+  if (configuracionesUI->diagnosticoOn){
+    lv_obj_add_state(ui_Switch1, LV_STATE_CHECKED);
+		lv_obj_clear_flag(ui_Label24, LV_OBJ_FLAG_HIDDEN);
+    
+		lv_obj_add_flag(ui_BotonEtapa1, LV_OBJ_FLAG_CLICKABLE);
+		lv_obj_add_flag(ui_BotonEtapa2, LV_OBJ_FLAG_CLICKABLE);
+		lv_obj_add_flag(ui_BotonEtapa3, LV_OBJ_FLAG_CLICKABLE);
+		lv_obj_add_flag(ui_BotonEtapa4, LV_OBJ_FLAG_CLICKABLE);
+		lv_obj_add_flag(ui_BotonPurga, LV_OBJ_FLAG_CLICKABLE);
+		lv_obj_add_flag(ui_BotonPurga1, LV_OBJ_FLAG_CLICKABLE);
+
+  }
+}
+
 // ACTUALIZACION DE WIDGETS DE CADA PANTALLA
 
 void actualizarValores(){
@@ -268,7 +288,10 @@ void actualizarValores(){
     }
     else if (pantalla_activa == ui_Alertas){
       actualizarValoresPantallaAlertas();
-    }    
+    }  
+   else if (pantalla_activa == ui_Inicio){
+      lv_disp_load_scr(ui_Principal);
+    }  
 
 
 }
@@ -448,13 +471,13 @@ const char* obtenerLabelAclaracionAlarma(causaAlarma_t causa){
       return "Se detecto presion baja, se recomienda no usar el equipo";
       break;
     case TEMPERATURA_ALTA:
-      return "Desconectar el equipo y llamar al técnico";
+      return "Desconectar el equipo y llamar al tecnico";
       break;
     case TEMPERATURA_BAJA:
       return "Riesgo de congelamiento";
       break;
     case TERMOSTATO_SEGURIDAD:
-      return "Desconectar el equipo y llamar al técnico";
+      return "Desconectar el equipo y llamar al tecnico";
       break;
     case FALLA_SENSOR_1:
       return "Llamar al tecnico para cambiar el sensor de la caldera";

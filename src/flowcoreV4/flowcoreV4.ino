@@ -30,10 +30,10 @@
 
 #define TIMEPO_REFRESCO_DISPLAY_MS  10
 
-SemaphoreHandle_t xSemaphore, isrSemaphore;
+SemaphoreHandle_t xSemaphore, isrSemaphore, initSemaphore;
 
-uint64_t medir_WCET, presentar_WCET, controlar_WCET;
-uint64_t tickRate = configTICK_RATE_HZ;
+// uint64_t medir_WCET, presentar_WCET, controlar_WCET;
+// uint64_t tickRate = configTICK_RATE_HZ;
 
 void medir(void * parameters){
 
@@ -56,8 +56,10 @@ void medir(void * parameters){
         //   Serial.print("WCET mediciones: ");
         //   Serial.println(medir_WCET);
         // }
+
       }
     }
+    vTaskDelay( 10 / portTICK_PERIOD_MS); // SIN ESTO SALTA EL WATCHDOG
   }
 }
 
@@ -65,6 +67,14 @@ void presentar(void * parameters){
 
   TickType_t  xLastWakeTime = xTaskGetTickCount();
   // static uint64_t cycleCounter = 0;
+  
+  static bool init = false;
+  while (init == false){
+    if (xSemaphoreTake( initSemaphore, portMAX_DELAY) == pdTRUE){
+      init = true;
+    }
+    vTaskDelay( 10 / portTICK_PERIOD_MS); // SIN ESTO SALTA EL WATCHDOG
+  }
 
   while(1){
     
@@ -95,6 +105,8 @@ void controlar(void * parameters){
     }
   }
 
+  xSemaphoreGive(initSemaphore);
+
   // static uint64_t cycleCounter = 0;
   while(1){
     if (uxSemaphoreGetCount(xSemaphore) == 0){
@@ -123,7 +135,7 @@ void controlar(void * parameters){
   }
 }
 
-// Interrupcion de mediciones listas
+// // Interrupcion de mediciones listas
 void IRAM_ATTR isr_mediciones() {
     BaseType_t xHigherPriorityTaskWoken;
     xSemaphoreGiveFromISR(isrSemaphore, &xHigherPriorityTaskWoken);
@@ -133,23 +145,24 @@ void IRAM_ATTR isr_mediciones() {
 void setup(){
     Serial.begin(115200);
 
-    // Serial.println(tickRate);
-    // time_meter_us_init();
+    // // Serial.println(tickRate);
+    // // time_meter_us_init();
     
     xSemaphore = xSemaphoreCreateCounting(CICLOS_PT100_1+CICLOS_PT100_2+CICLOS_LOOP_I+1,CICLOS_PT100_1+CICLOS_PT100_2+CICLOS_LOOP_I+1);
     isrSemaphore = xSemaphoreCreateBinary();
+    initSemaphore = xSemaphoreCreateBinary();
 
-    if (xSemaphore == NULL || isrSemaphore == NULL) {
-        Serial.println("Error al crear semáforo.");
-        while(1);
-    }
+    // if (xSemaphore == NULL || isrSemaphore == NULL) {
+    //     Serial.println("Error al crear semáforo.");
+    //     while(1);
+    // }
 
-    pinMode(26, OUTPUT);
-    digitalWrite(26,HIGH);
-    pinMode(15,OUTPUT);
-    digitalWrite(15,HIGH);
-    pinMode(25,OUTPUT);
-    digitalWrite(25,HIGH);
+    // pinMode(42, OUTPUT);
+    // digitalWrite(42,HIGH);
+    // pinMode(21,OUTPUT);
+    // digitalWrite(21,HIGH);
+    // pinMode(11,OUTPUT);
+    // digitalWrite(11,HIGH);
     
     inicializarNVS();
     inicializarSensores(); 
@@ -157,24 +170,24 @@ void setup(){
     
     inicializarEntradasMecanicas();
     inicializarReles();
+
     inicializarBuzzer();
     inicializarControles();
 
     inicializarContador();
 
-    attachInterrupt(digitalPinToInterrupt(39), isr_mediciones, FALLING);
+    attachInterrupt(digitalPinToInterrupt(2), isr_mediciones, FALLING);
     // attachInterrupt(digitalPinToInterrupt(36), isr_mediciones, FALLING); // Pin de entrada de sensado de termostato de seguridad
 
-    // size_t totalHeap = ESP.getHeapSize();
-    // size_t freeHeap = xPortGetFreeHeapSize();
+    size_t totalHeap = ESP.getHeapSize();
+    size_t freeHeap = xPortGetFreeHeapSize();
 
-    // Serial.printf("Total Heap Size: %d bytes\n", totalHeap);
-    // Serial.printf("Free Heap Size: %d bytes\n", freeHeap);
+    Serial.printf("Total Heap Size: %d bytes\n", totalHeap);
+    Serial.printf("Free Heap Size: %d bytes\n", freeHeap);
     
     xTaskCreate(medir, "Task 1", 4000, NULL, 3, NULL);
     xTaskCreate(controlar, "Task 2", 5000, NULL, 2, NULL);
     xTaskCreate(presentar, "Task 3", 50000, NULL, 1, NULL);
-
 }
 
 void loop(){}

@@ -19,20 +19,20 @@
 
 // Pines usados para la comunicacion
 
-#define SENSORES_MISO   19 //12 
-#define SENSORES_MOSI   23 //13
-#define SENSORES_SCLK   18 //14
+#define SENSORES_MISO   39 //12 
+#define SENSORES_MOSI   40 //13
+#define SENSORES_SCLK   41 //14
 
-#define SENSORES_CS     26   // Chip Select SPI
-#define SENSORES_DRDY   39   // ~ DRDY
-#define SENSORES_I_SW   2   // IN multiplexor
+#define SENSORES_CS     42   // Chip Select SPI
+#define SENSORES_DRDY   2   // ~ DRDY
+#define SENSORES_I_SW   1   // IN multiplexor
 
 #define RESOLUCION      16
 
 #define CANT_MUESTRAS   6
 #define CANT_MEDICIONES_ERRADAS 5
 
-#define RREF_RTD        500
+#define RREF_RTD        470
 #define RREF_4_20       100
 #define RTD0            100
 
@@ -82,7 +82,9 @@
 
 #define REG_IDAC1   0x0B    // IDAC Control Register 1
 #define I1DIR_AIN0  0x00    // bits 7:4 de IDAC1, 0000: AIN0
+#define I1DIR_AIN6  0x60    // bits 7:4 de IDAC1, 0110: AIN6
 #define I2DIR_AIN1  0x01    // bits 3:0 de IDAC1, 0001: AIN1
+#define I2DIR_AIN7  0x07    // bits 3:0 de IDAC1, 0111: AIN7
 
 
 // =====[Declaracion de tipos de datos privados]=====
@@ -109,7 +111,7 @@ int contadorCiclos = 0;
     SPIClass& spiSensores = SPI;
 #endif
 #if TESTEO == (UNITARIO)
-    SPIClass spiSensores(VSPI);
+    SPIClass spiSensores(FSPI);
 #endif
 
 
@@ -161,7 +163,7 @@ void inicializarSensores(){
     delayMicroseconds(1);
     spiSensores.transfer(ONE_BYTE);
     delayMicroseconds(1);
-    spiSensores.transfer(I1DIR_AIN0 | I2DIR_AIN1);
+    spiSensores.transfer(I1DIR_AIN6 | I2DIR_AIN7);
 
     delayMicroseconds(1);
     spiSensores.transfer(SELF_CAL);
@@ -200,6 +202,8 @@ void actualizarSensores(){
     
     valorADC = (msb << 8) | lsb;
     
+    // Serial.println(valorADC);
+
     if (contadorCiclos == 0){
         muestrasPromediadas = 0;
     } 
@@ -230,11 +234,13 @@ void actualizarSensores(){
                 // MEDICIONES ASINCRONICAS
                 #if (TEMPORIZACION == ASINCRONICO)
                     mediciones[PT100_1][muestrasPromediadas] = nuevaLectura;
-                    aux = 0;
-                    for (int i=0; i < CICLOS_PT100_1; i++){
-                        aux += mediciones[PT100_1][i];
+                    if (muestrasPromediadas == CICLOS_PT100_1 - 1){
+                        aux = 0;
+                        for (int i=0; i < CICLOS_PT100_1; i++){
+                            aux += mediciones[PT100_1][i];
+                        }
+                        valorSensores[PT100_1] = aux / CICLOS_PT100_1;
                     }
-                    valorSensores[PT100_1] = aux / CICLOS_PT100_1;
                 #endif
                 // MEDICIONES SINCRONICAS
                 #if (TEMPORIZACION == SINCRONICO)
@@ -250,11 +256,14 @@ void actualizarSensores(){
                 // MEDICIONES ASINCRONICAS
                 #if (TEMPORIZACION == ASINCRONICO)
                     mediciones[PT100_2][muestrasPromediadas] = nuevaLectura;
-                    aux = 0;
-                    for (int i=0; i < CICLOS_PT100_2; i++){
-                        aux += mediciones[PT100_2][i];
+                    if (muestrasPromediadas == CICLOS_PT100_2 - 1){
+                        aux = 0;
+                        for (int i=0; i < CICLOS_PT100_2; i++){
+                            aux += mediciones[PT100_2][i];
+                        }
+                        
+                        valorSensores[PT100_2] = aux / CICLOS_PT100_2;
                     }
-                    valorSensores[PT100_2] = aux / CICLOS_PT100_2;
                 #endif
                 // MEDICIONES SINCRONICAS
                 #if (TEMPORIZACION == SINCRONICO)
@@ -271,11 +280,13 @@ void actualizarSensores(){
                 // MEDICIONES ASINCRONICAS
                 #if (TEMPORIZACION == ASINCRONICO)
                     mediciones[LOOP_CORRIENTE][muestrasPromediadas] = nuevaLectura;
-                    aux = 0;
-                    for (int i=0; i < CICLOS_LOOP_I; i++){
-                        aux += mediciones[LOOP_CORRIENTE][i];
+                    if (muestrasPromediadas == CICLOS_LOOP_I - 1){
+                        aux = 0;
+                        for (int i=0; i < CICLOS_LOOP_I; i++){
+                            aux += mediciones[LOOP_CORRIENTE][i];
+                        }
+                        valorSensores[LOOP_CORRIENTE] = aux / (CICLOS_LOOP_I);
                     }
-                    valorSensores[LOOP_CORRIENTE] = aux / (CICLOS_LOOP_I);
                 #endif
                 // MEDICIONES SINCRONICAS
                 #if (TEMPORIZACION == SINCRONICO)
@@ -327,13 +338,13 @@ void cambiarConfiguracionesADC(){
             delayMicroseconds(1);
             spiSensores.transfer(VREFCON_ON | REFSELT_E0);
 
-            // AIN2 Y AIN3 
+            // AIN0 Y AIN1 
             delayMicroseconds(1);
             spiSensores.transfer(WRITE_REG | REG_MUX0);
             delayMicroseconds(1);
             spiSensores.transfer(ONE_BYTE);
             delayMicroseconds(1);
-            spiSensores.transfer(MUX_SP_AIN2 | MUX_SN_AIN3);
+            spiSensores.transfer(MUX_SP_AIN0 | MUX_SN_AIN1);
 
             break;
 
@@ -341,13 +352,13 @@ void cambiarConfiguracionesADC(){
 
             digitalWrite(SENSORES_I_SW, HIGH);
 
-            // AINP 6 Y AINN7 
+            // AINP4 Y AIN5 
             delayMicroseconds(1);
             spiSensores.transfer(WRITE_REG | REG_MUX0);
             delayMicroseconds(1);
             spiSensores.transfer(ONE_BYTE);
             delayMicroseconds(1);
-            spiSensores.transfer(MUX_SP_AIN6 | MUX_SN_AIN7);
+            spiSensores.transfer(MUX_SP_AIN4 | MUX_SN_AIN5);
 
             break;
 
@@ -369,13 +380,13 @@ void cambiarConfiguracionesADC(){
             delayMicroseconds(1);
             spiSensores.transfer(VREFCON_ON | REFSELT_INT);
             
-            // AIN4 Y AIN5 
+            // AIN2 Y AIN3
             delayMicroseconds(1);
             spiSensores.transfer(WRITE_REG | REG_MUX0);
             delayMicroseconds(1);
             spiSensores.transfer(ONE_BYTE);
             delayMicroseconds(1);
-            spiSensores.transfer(MUX_SP_AIN4 | MUX_SN_AIN5);
+            spiSensores.transfer(MUX_SP_AIN2 | MUX_SN_AIN3);
 
             break;
     }
