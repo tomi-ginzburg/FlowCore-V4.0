@@ -147,7 +147,11 @@ const Configs* obtenerConfiguracionesNVS(){
     return &configuraciones;
 }
 
+#ifdef TESTING
+int32_t* obtenerAlarmasNVS(){
+#else
 const int32_t* obtenerAlarmasNVS(){
+#endif
     return alarmas;
 }
 

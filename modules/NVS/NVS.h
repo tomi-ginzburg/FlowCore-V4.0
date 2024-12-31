@@ -86,8 +86,11 @@ const struct Configs* obtenerConfiguracionesNVS();
  * pre: -
  * post: devuelve un puntero constante al array de alarmas
  */
+#ifdef TESTING
+int32_t* obtenerAlarmasNVS();
+#else
 const int32_t* obtenerAlarmasNVS();
-
+#endif
 #ifdef __cplusplus
 }
 #endif
