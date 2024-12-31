@@ -36,6 +36,11 @@
 #define RREF_4_20       100
 #define RTD0            100
 
+#define MAX_PRESION_PSI 200
+#define MIN_PRESION_PSI 0
+#define MAX_CURRENT     20
+#define MIN_CURRENT     4
+
 // Comandos y registros del ADS1148
 
 #define RESET       0x06
@@ -121,6 +126,8 @@ void cambiarConfiguracionesADC();
 void actualizarEstadoSensores();
 float conversionResistencia(float valorADC, tecnologiaSensor_t tecnologiaSensor);
 float conversionTemperatura(float valorResistencia, tecnologiaSensor_t tecnologiaSensor);
+float conversionCorriente(float valorADC);
+float conversionPresion(float valorCorriente);
 
 // =====[Implementacion de funciones publicas]=======
 
@@ -201,8 +208,6 @@ void actualizarSensores(){
     spiSensores.endTransaction();
     
     valorADC = (msb << 8) | lsb;
-    
-    // Serial.println(valorADC);
 
     if (contadorCiclos == 0){
         muestrasPromediadas = 0;
@@ -228,8 +233,6 @@ void actualizarSensores(){
         switch(estadoLecturaSensores){
             case SENSOR_1:
                 nuevaLectura = conversionTemperatura(conversionResistencia(valorADC, tecnologiaSensor[PT100_1]), tecnologiaSensor[PT100_1]);
-                // Serial.print("s1: ");
-                // Serial.println(nuevaLectura);
 
                 // MEDICIONES ASINCRONICAS
                 #if (TEMPORIZACION == ASINCRONICO)
@@ -250,8 +253,6 @@ void actualizarSensores(){
                 break;
             case SENSOR_2:
                 nuevaLectura = conversionTemperatura(conversionResistencia(valorADC, tecnologiaSensor[PT100_2]), tecnologiaSensor[PT100_2]);
-                // Serial.print("s2: ");
-                // Serial.println(nuevaLectura);
                 
                 // MEDICIONES ASINCRONICAS
                 #if (TEMPORIZACION == ASINCRONICO)
@@ -273,9 +274,7 @@ void actualizarSensores(){
                 break;
 
             case SENSOR_3:
-                nuevaLectura = (valorADC*2048.0*2)/(pow(2,16)*RREF_4_20);
-                // Serial.print("s3: ");
-                // Serial.println(nuevaLectura);
+                nuevaLectura = conversionPresion(conversionCorriente(valorADC));
 
                 // MEDICIONES ASINCRONICAS
                 #if (TEMPORIZACION == ASINCRONICO)
@@ -306,7 +305,11 @@ void actualizarSensores(){
     actualizarEstadoSensores();
 }
 
+#ifdef TESTING
+float* obtenerValorSensores(){
+#else 
 const float* obtenerValorSensores(){
+#endif
     return valorSensores;
 }
 
@@ -446,4 +449,12 @@ float conversionTemperatura(float valorResistencia, tecnologiaSensor_t tecnologi
     }
     
     return temperatura;
+}
+
+float conversionCorriente(float valorADC){
+    return (valorADC*2048.0*2)/(pow(2,16)*RREF_4_20);
+}
+
+float conversionPresion(float valorCorriente){
+    return (valorCorriente - MIN_CURRENT)*(MAX_PRESION_PSI - MIN_PRESION_PSI)/(MAX_CURRENT - MIN_CURRENT);
 }

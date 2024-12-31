@@ -34,6 +34,10 @@ void actualizarSensores();
  * pre: -
  * post: devuelve un puntero constante a los valores de los sensores
  */
+#ifdef TESTING
+float* obtenerValorSensores();
+#else 
 const float* obtenerValorSensores();
+#endif
 
 #endif
