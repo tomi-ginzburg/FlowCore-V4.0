@@ -5,9 +5,9 @@
 // =====[Declaracion de defines privados]============
 
 #define ENTRADA_TERMOSTATO_SEG  10
-#define ENTRADA_TERMOSTATO_AMB  38
-#define ENTRADA_FLOW_SW_BOMBAS  47
-#define ENTRADA_FLOW_SW_ACS     48
+#define ENTRADA_TERMOSTATO_AMB  48
+#define ENTRADA_FLOW_SW_ACS     47
+#define ENTRADA_FLOW_SW_BOMBAS  38
 
 // =====[Declaracion de tipos de datos privados]=====
 
@@ -22,7 +22,7 @@ int entradas[CANT_ENTRADAS] = {ENTRADA_TERMOSTATO_SEG, ENTRADA_TERMOSTATO_AMB, E
 void inicializarEntradasMecanicas(){
     for (int i=0; i < CANT_ENTRADAS; i++){
         if (entradas[i] != 0){
-            pinMode(entradas[i], INPUT_PULLDOWN);
+            pinMode(entradas[i], INPUT);
             estadoEntradas[i] = digitalRead(entradas[i]);
             tiempoDesdeCambioEntradas[i] = 0;
             contarMs(&tiempoDesdeCambioEntradas[i],0,HIGH);
@@ -45,11 +45,19 @@ void actualizarEntradasMecanicas(){
     }
 }
 
+#ifdef TESTING
+int* obtenerEstadoEntradasMecanicas(){
+#else
 const int* obtenerEstadoEntradasMecanicas(){
+#endif
     return estadoEntradas;
 }
 
+#ifdef TESTING
+uint64_t* obtenerTiempoCambioEntradasMecanicas(){
+#else 
 const uint64_t* obtenerTiempoCambioEntradasMecanicas(){
+#endif
     return tiempoDesdeCambioEntradas;
 }
 

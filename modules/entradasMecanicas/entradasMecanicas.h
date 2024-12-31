@@ -33,13 +33,21 @@ void actualizarEntradasMecanicas();
  * pre: -
  * post: devuelve un puntero constante a estadoEntradas
  */
-const int* obtenerEstadoEntradasMecanicas(); 
+ #ifdef TESTING
+int* obtenerEstadoEntradasMecanicas(); 
+#else
+const int* obtenerEstadoEntradasMecanicas();
+#endif
 
 /*
  * pre: -
  * post: devuelve un puntero constante a tiempoCambioEstadoEntradas
  */
-const uint64_t* obtenerTiempoCambioEntradasMecanicas(); 
+ #ifdef TESTING
+uint64_t* obtenerTiempoCambioEntradasMecanicas(); 
+#else
+const uint64_t* obtenerTiempoCambioEntradasMecanicas();
+#endif
 
 
 #endif
