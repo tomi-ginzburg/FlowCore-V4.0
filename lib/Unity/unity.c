@@ -7,6 +7,8 @@
 
 #include "unity.h"
 
+#define UNITY_INCLUDE_CONFIG_H
+
 #ifndef UNITY_PROGMEM
 #define UNITY_PROGMEM
 #endif
