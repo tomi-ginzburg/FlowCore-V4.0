@@ -76,12 +76,20 @@ const bool* obtenerEstadoEtapas();
  * pre: -
  * post: devuelve un puntero constante a tiempoEncendidoEtapas
  */
+ #ifdef TESTING
+uint64_t* obtenerTiempoEncendidoEtapas(); 
+#else
 const uint64_t* obtenerTiempoEncendidoEtapas();
+#endif
 
 /*
  * pre: -
  * post: devuelve un puntero constante a tiempoApagadoEtapas
  */
+ #ifdef TESTING
+uint64_t* obtenerTiempoApagadoEtapas(); 
+#else
 const uint64_t* obtenerTiempoApagadoEtapas();
+#endif
 
 #endif

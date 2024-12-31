@@ -151,11 +151,19 @@ const bool* obtenerEstadoEtapas(){
 	return estadoEtapas;
 }
 
+#ifdef TESTING
+uint64_t* obtenerTiempoEncendidoEtapas(){
+#else 
 const uint64_t* obtenerTiempoEncendidoEtapas(){
+#endif
   return tiempoEncendidoEtapas;
 }
 
+#ifdef TESTING
+uint64_t* obtenerTiempoApagadoEtapas(){
+#else 
 const uint64_t* obtenerTiempoApagadoEtapas(){
+#endif
   return tiempoApagadoEtapas;
 }
 
