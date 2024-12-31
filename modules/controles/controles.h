@@ -31,7 +31,8 @@ typedef enum{
     TEMPERATURA_BAJA,
     TERMOSTATO_SEGURIDAD,
     FALLA_SENSOR_1,
-    FALLA_SENSOR_2
+    FALLA_SENSOR_2,
+    FALLA_SENSOR_I
 } causaAlarma_t;
 
 // =====[Declaracion de funciones publicas]==========
@@ -51,6 +52,22 @@ void solicitarDiagnosticoEtapa(int etapa, bool encendido);
 const estadoControl_t* obtenerEstadoControl();
 
 const causaAlarma_t* obtenerCausaAlarma();
+
+
+// TESTS
+#ifdef TESTING
+void reiniciarEstadoControles();
+void test_verificarFallaTermostatoSeguridad();
+void test_verificarFallaTemperaturaAlta();
+void test_verificarFallaTemperaturaBaja();
+void test_verificarFallaApagadoBombas();
+void test_verificarFallaSensorCaldera();
+void test_verificarFallaSensorACS();
+void test_verificarFallaEncendidoBombaCalefaccion();
+void test_verificarFallaEncendidoBombaACS();
+void test_verificarFallaPresionAlta();
+void test_verificarFallaPresionBaja();
+#endif
 
 #ifdef __cplusplus
 }

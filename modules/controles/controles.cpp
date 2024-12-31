@@ -12,10 +12,13 @@
 // =====[Declaracion de defines privados]============
 
 #define LIMITE_INF_PRESION      1
-#define LIMITE_SUP_PRESION      25
+#define LIMITE_SUP_PRESION      20
 #define LIMITE_INF_TEMPERATURA  5
-#define LIMITE_SUP_TEMPERATURA  90
+#define LIMITE_SUP_TEMPERATURA  80
+#define TEMPERATURA_EMERGENCIA  95
 #define CANT_RESISTENCIAS       2
+#define CANT_RESISTENCIAS_TOTALES 4
+#define CANT_MUESTRAS_FALLA     3
 
 // Tiempos para verificar falla
 #define TIEMPO_BOMBA_CAL_MS         10000
@@ -34,7 +37,7 @@
 //---------------------------------------------------
 // ESTO VA A SER PARTE DE LAS CONFIGURACIONES
 
-uint64_t tiempoDuracionMantenimiento = 5000;//5000;
+uint64_t tiempoDuracionMantenimiento = 5000;
 uint64_t tiempoEsperaMantenimiento = 2592000000;
 
 //---------------------------------------------------
@@ -43,23 +46,27 @@ estadoControl_t estadoControl;
 // estadoControl_t estadoControlAnterior;
 causaAlarma_t causaAlarma;
 
-// Punteros a variables del modulo de Entradas Mecanicas
+#ifdef TESTING
+int *estadoEntradasControl;
+float *valorSensoresControl;
+uint64_t *tiempoEstadoEntradasControl;
+uint64_t *tiempoEncendidoEtapasControl;
+uint64_t *tiempoApagadoEtapasControl;
+int32_t *alarmasControl;
+#else
 const int *estadoEntradasControl;
+const float *valorSensoresControl;
 const uint64_t *tiempoEstadoEntradasControl;
-
-// Punteros a variables del modulo de Reles
-const bool *etapasControl;
 const uint64_t *tiempoEncendidoEtapasControl;
 const uint64_t *tiempoApagadoEtapasControl;
+const int32_t *alarmasControl;
+#endif
 
-// Punteros a variables del modulo de Sensores
-const float *valorSensoresControl;
-
+const bool *etapasControl;
 const Configs *configuracionesControl;
 
 uint64_t contadorMantenimiento = 0;
-uint64_t contadorFalla = 0;
-int relesDeResistencias[CANT_RESISTENCIAS] = {ETAPA_1, ETAPA_2, ETAPA_3, ETAPA_4};
+int relesDeResistencias[CANT_RESISTENCIAS_TOTALES] = {ETAPA_1, ETAPA_2, ETAPA_3, ETAPA_4};
 
 bool acsOn = true;
 bool supervisionOn = false;
@@ -79,6 +86,34 @@ void actualizarControlesAlarma();
 void actualizarMantenimiento();
 void purgarBomba(int bomba);
 
+#ifdef TESTING
+void mockingSensores();
+void mockingEntradasMecanicas();
+void test_resistenciasApagadas();
+void test_fallaTermostatoSeguridad_forzarFalla();
+void test_fallaTermostatoSeguridad_verificarTest();
+void test_fallaTemperaturaAlta_forzarFalla();
+void test_fallaTemperaturaAlta_verificarTest();
+void test_fallaTemperaturaBaja_forzarFalla();
+void test_fallaTemperaturaBaja_verificarTest();
+void test_fallaApagadoBombas_forzarFalla();
+void test_fallaApagadoBombas_verificarTest();
+void test_fallaSensorCaldera_forzarFalla();
+void test_fallaSensorCaldera_verificarTest();
+void test_fallaSensorACS_forzarFalla();
+void test_fallaSensorACS_verificarTest();
+void test_fallaEncendidoBombaCalefaccion_forzarFalla();
+void test_fallaEncendidoBombaCalefaccion_verificarTest();
+void test_fallaEncendidoBombaACS_forzarFalla();
+void test_fallaEncendidoBombaACS_verificarTest();
+void test_fallaPresionAlta_forzarFalla();
+void test_fallaPresionAlta_verificarTest();
+void test_fallaPresionBaja_forzarFalla();
+void test_fallaPresionBaja_verificarTest();
+void test_gestionFallas(void (*forzarFalla)(), void (*testearRespuesta)(), const bool* tests = nullptr);
+void test_superposicionFallas(void (*fallaPrimera)(), const bool* tests);
+#endif
+
 // =====[Implementacion de funciones publicas]=======
 
 void inicializarControles(){
@@ -96,6 +131,7 @@ void inicializarControles(){
     tiempoApagadoEtapasControl = obtenerTiempoApagadoEtapas();
     valorSensoresControl = obtenerValorSensores();
     configuracionesControl = obtenerConfiguracionesNVS();
+    alarmasControl = obtenerAlarmasNVS();
     
     // verificarInicioControl();
     
@@ -135,6 +171,109 @@ const estadoControl_t* obtenerEstadoControl(){
 const causaAlarma_t* obtenerCausaAlarma(){
     return &causaAlarma;
 }
+
+#ifdef TESTING
+
+void reiniciarEstadoControles(){
+    estadoControl = APAGADO;
+    causaAlarma = NO_FALLA;
+    mockingSensores();
+    mockingEntradasMecanicas();
+    for (int i=0; i < CANT_ETAPAS - 1; i++){
+        solicitarDesactivarRele(i, false, 0);
+        flagsEtapasDesactivadas[i] = false;
+    }
+    actualizarReles();
+    for (int i = 0; i< CANT_ALARMAS; i++){
+        alarmasControl[i] = 0;
+    }
+    if (configuracionesControl->calefaccionOn == false){
+        bool calOn = true;
+        guardarConfigsNVS(CALEFACCION_ON, &calOn, sizeof(calOn));
+    }
+    if (acsOn == false){
+        acsOn = true;
+    }
+
+    
+}
+
+void test_verificarFallaTermostatoSeguridad(){
+
+    test_gestionFallas(test_fallaTermostatoSeguridad_forzarFalla, test_fallaTermostatoSeguridad_verificarTest);
+    bool pruebasSeleccionadas[] = {false, true, false, true, true, true, true, true, true, true};
+    test_superposicionFallas(test_fallaTermostatoSeguridad_forzarFalla, pruebasSeleccionadas); 
+    
+}
+
+void test_verificarFallaTemperaturaAlta(){
+
+    test_gestionFallas(test_fallaTemperaturaAlta_forzarFalla, test_fallaTemperaturaAlta_verificarTest);
+    bool pruebasSeleccionadas[] = {true, false, false, true, true, true, true, true, true, false};
+    test_superposicionFallas(test_fallaTemperaturaAlta_forzarFalla, pruebasSeleccionadas); 
+}
+
+void test_verificarFallaTemperaturaBaja(){
+
+    test_gestionFallas(test_fallaTemperaturaBaja_forzarFalla, test_fallaTemperaturaBaja_verificarTest);
+    bool pruebasSeleccionadas[] = {false, false, false, true, true, true, true, true, false, true};
+    test_superposicionFallas(test_fallaTemperaturaBaja_forzarFalla, pruebasSeleccionadas); 
+}
+
+void test_verificarFallaApagadoBombas(){
+
+    bool pruebasSeleccionadas[] = {false, true, false, false, true};
+    test_gestionFallas(test_fallaApagadoBombas_forzarFalla, test_fallaApagadoBombas_verificarTest, pruebasSeleccionadas);
+    bool pruebasSeleccionadas2[] = {true, true, true, false, true, true, false, false, true, true};
+    test_superposicionFallas(test_fallaApagadoBombas_forzarFalla, pruebasSeleccionadas2); 
+}
+
+void test_verificarFallaSensorCaldera(){
+
+    test_gestionFallas(test_fallaSensorCaldera_forzarFalla, test_fallaSensorCaldera_verificarTest);
+    bool pruebasSeleccionadas[] = {true, false, false, true, false, true, true, true, true, true};
+    test_superposicionFallas(test_fallaSensorCaldera_forzarFalla, pruebasSeleccionadas); 
+}
+
+void test_verificarFallaSensorACS(){
+
+    test_gestionFallas(test_fallaSensorACS_forzarFalla, test_fallaSensorACS_verificarTest);
+    bool pruebasSeleccionadas[] = {true, true, true, true, true, false, true, false, true, true};
+    test_superposicionFallas(test_fallaSensorACS_forzarFalla, pruebasSeleccionadas); 
+}
+
+void test_verificarFallaEncendidoBombaCalefaccion(){
+    
+    bool pruebasSeleccionadas[] = {false, false, true, false, true};
+    test_gestionFallas(test_fallaEncendidoBombaCalefaccion_forzarFalla, test_fallaEncendidoBombaCalefaccion_verificarTest, pruebasSeleccionadas);
+    bool pruebasSeleccionadas2[] = {true, true, true, true, true, true, false, true, true, true};
+    test_superposicionFallas(test_fallaEncendidoBombaCalefaccion_forzarFalla, pruebasSeleccionadas2); 
+}
+
+void test_verificarFallaEncendidoBombaACS(){
+    
+    bool pruebasSeleccionadas[] = {false, false, false, true, true};
+    test_gestionFallas(test_fallaEncendidoBombaACS_forzarFalla, test_fallaEncendidoBombaACS_verificarTest, pruebasSeleccionadas);
+    bool pruebasSeleccionadas3[] = {true, true, true, true, true, true, true, false, true, true};
+    test_superposicionFallas(test_fallaEncendidoBombaACS_forzarFalla, pruebasSeleccionadas3); 
+}
+
+void test_verificarFallaPresionAlta(){
+
+    test_gestionFallas(test_fallaPresionAlta_forzarFalla, test_fallaPresionAlta_verificarTest);
+    bool pruebasSeleccionadas4[] = {true, true, false, true, true, true, true, true, false, false};
+    test_superposicionFallas(test_fallaPresionAlta_forzarFalla, pruebasSeleccionadas4); 
+}
+
+void test_verificarFallaPresionBaja(){
+
+    test_gestionFallas(test_fallaPresionBaja_forzarFalla, test_fallaPresionBaja_verificarTest);
+    bool pruebasSeleccionadas[] = {true, false, true, true, true, true, true, true, false, false};
+    test_superposicionFallas(test_fallaPresionBaja_forzarFalla, pruebasSeleccionadas); 
+}
+
+#endif
+
 
 // =====[Implementacion de funciones privadas]=======
 
@@ -217,38 +356,38 @@ void actualizarEstadoControl(){
             break;
 
         case ENCENDIDO_SUPERVISION:
-            static int contadorFallaTempAlta = 0;
+            // static int contadorFallaTempAlta = 0;
 
-            if (valorSensoresControl[PT100_1] > LIMITE_SUP_TEMPERATURA){
-                contadorFallaTempAlta++;
-                if (contadorFallaTempAlta > 2){
-                    causaAlarma = TERMOSTATO_SEGURIDAD;
-                    estadoControl = ALARMA;
+            // if (valorSensoresControl[PT100_1] > LIMITE_SUP_TEMPERATURA){
+            //     contadorFallaTempAlta++;
+            //     if (contadorFallaTempAlta > 2){
+            //         causaAlarma = TERMOSTATO_SEGURIDAD;
+            //         estadoControl = ALARMA;
 
-                    contarMs(&contadorFalla, 1000, LOW);
-                    for (int i=0; i < CANT_RESISTENCIAS; i++){
-                        solicitarDesactivarRele(i);
-                    }
-                    solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
-                    solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
-                }
-            }
+            //         contarMs(&contadorFalla, 1000, LOW);
+            //         for (int i=0; i < CANT_RESISTENCIAS; i++){
+            //             solicitarDesactivarRele(i);
+            //         }
+            //         solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
+            //         solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
+            //     }
+            // }
 
-            // Si se pide ACS se controlan las resisitencias
-            if (estadoEntradasControl[FLOW_SW_ACS] == LOW && supervisionOn == false){
-                supervisionOn = true;
-            } 
+            // // Si se pide ACS se controlan las resisitencias
+            // if (estadoEntradasControl[FLOW_SW_ACS] == LOW && supervisionOn == false){
+            //     supervisionOn = true;
+            // } 
 
-            // Si se deja de pedir ACS se apagan las resistencias
-            else if (estadoEntradasControl[FLOW_SW_ACS] == HIGH && supervisionOn == true){
-                supervisionOn = false;
-                for (int i=0; i < CANT_RESISTENCIAS; i++){
-                    solicitarDesactivarRele(i);
-                }
+            // // Si se deja de pedir ACS se apagan las resistencias
+            // else if (estadoEntradasControl[FLOW_SW_ACS] == HIGH && supervisionOn == true){
+            //     supervisionOn = false;
+            //     for (int i=0; i < CANT_RESISTENCIAS; i++){
+            //         solicitarDesactivarRele(i);
+            //     }
 
-            }
+            // }
 
-            break;
+            // break;
             
         case DIAGNOSTICO: 
             if (configuracionesControl->diagnosticoOn == false){
@@ -276,21 +415,21 @@ void actualizarEstadoAlarma(){
     switch (causaAlarma){
         case PRESION_ALTA:
 
-            if (valorSensoresControl[LOOP_CORRIENTE] < LIMITE_SUP_PRESION){
+            if (valorSensoresControl[LOOP_CORRIENTE] < LIMITE_SUP_PRESION && valorSensoresControl[LOOP_CORRIENTE] != VALOR_ERROR_SENSOR){
                 causaAlarma = NO_FALLA;
             }
             break;
 
         case PRESION_BAJA:
 
-            if (valorSensoresControl[LOOP_CORRIENTE] > LIMITE_INF_PRESION){
+            if (valorSensoresControl[LOOP_CORRIENTE] > LIMITE_INF_PRESION && valorSensoresControl[LOOP_CORRIENTE] != VALOR_ERROR_SENSOR){
                 causaAlarma = NO_FALLA;
             }
             break;
 
         case TEMPERATURA_ALTA:
 
-            if (valorSensoresControl[PT100_1] < LIMITE_SUP_TEMPERATURA){
+            if (valorSensoresControl[PT100_1] < LIMITE_SUP_TEMPERATURA && valorSensoresControl[PT100_1] != VALOR_ERROR_SENSOR){
                 causaAlarma = NO_FALLA;
                 estadoControl = ENCENDIDO_IDLE;
 
@@ -302,7 +441,7 @@ void actualizarEstadoAlarma(){
             break; 
 
         case TEMPERATURA_BAJA:
-            if (valorSensoresControl[PT100_1] > LIMITE_INF_TEMPERATURA){
+            if (valorSensoresControl[PT100_1] > LIMITE_INF_TEMPERATURA && valorSensoresControl[PT100_1] != VALOR_ERROR_SENSOR){
                 causaAlarma = NO_FALLA;
                 estadoControl = ENCENDIDO_IDLE;
             
@@ -337,21 +476,22 @@ void verificarFalla(){
         solicitarActivarAlarma();
         
         // Apago las resistencias
-        for (int i=0; i < CANT_RESISTENCIAS; i++){
+        for (int i=0; i < CANT_RESISTENCIAS_TOTALES; i++){
             solicitarDesactivarRele(i);
         }
 
-        // Prendo ambas bombas con apagado automatico para intentar bajar la temperatura
-        solicitarActivarRele(ETAPA_5, true, TIEMPO_BOMBAS_EMERGENCIA, true);
-        solicitarActivarRele(ETAPA_6, true, TIEMPO_BOMBAS_EMERGENCIA, true);
+        // Prendo la bomba de calefaccion intentar bajar la temperatura
+        solicitarActivarRele(ETAPA_5, true, TIEMPO_BOMBA_CAL_MS);
+        solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
     }
 
     // Sobretemperatura se da sensor N°1
-    if (valorSensoresControl[PT100_1] > LIMITE_SUP_TEMPERATURA && valorSensoresControl[PT100_1] != VALOR_ERROR_SENSOR){
+    if (valorSensoresControl[PT100_1] > LIMITE_SUP_TEMPERATURA 
+        && valorSensoresControl[PT100_1] != VALOR_ERROR_SENSOR){
 
         contadorFallaTempAlta++;
 
-        if (contadorFallaTempAlta > 3 && obtenerPrioridadAlarma(TEMPERATURA_ALTA) < obtenerPrioridadAlarma(causaAlarma)){
+        if (contadorFallaTempAlta > CANT_MUESTRAS_FALLA && obtenerPrioridadAlarma(TEMPERATURA_ALTA) < obtenerPrioridadAlarma(causaAlarma)){
             causaAlarma = TEMPERATURA_ALTA; 
             guardarAlarmaNVS((int32_t) causaAlarma);
 
@@ -360,13 +500,13 @@ void verificarFalla(){
             solicitarActivarAlarma();
 
             // APAGO RESISTENCIAS
-            for (int i=0; i < CANT_RESISTENCIAS; i++){
+            for (int i=0; i < CANT_RESISTENCIAS_TOTALES; i++){
                 solicitarDesactivarRele(i);
             }
 
-            // Prendo ambas bombas para intentar bajar la temperatura
-            solicitarActivarRele(ETAPA_5, true, TIEMPO_BOMBAS_EMERGENCIA, true);
-            solicitarActivarRele(ETAPA_6, true, TIEMPO_BOMBAS_EMERGENCIA, true);
+            // Prendo la bomba de calefaccion intentar bajar la temperatura
+            solicitarActivarRele(ETAPA_5, true, TIEMPO_BOMBA_CAL_MS);
+        solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
             
         }
     } else {
@@ -374,11 +514,12 @@ void verificarFalla(){
     }
 
     // Baja temperatura
-    if (valorSensoresControl[PT100_1] < LIMITE_INF_TEMPERATURA && valorSensoresControl[PT100_1] != VALOR_ERROR_SENSOR){
+    if (valorSensoresControl[PT100_1] < LIMITE_INF_TEMPERATURA 
+        && valorSensoresControl[PT100_1] != VALOR_ERROR_SENSOR){
 
         contadorFallaTempBaja++;
 
-        if (contadorFallaTempBaja > 3 && obtenerPrioridadAlarma(TEMPERATURA_BAJA) < obtenerPrioridadAlarma(causaAlarma)){
+        if (contadorFallaTempBaja > CANT_MUESTRAS_FALLA && obtenerPrioridadAlarma(TEMPERATURA_BAJA) < obtenerPrioridadAlarma(causaAlarma)){
             causaAlarma = TEMPERATURA_BAJA; 
             guardarAlarmaNVS((int32_t) causaAlarma);
 
@@ -392,8 +533,8 @@ void verificarFalla(){
             }
 
             //Prendo las bombas para que no se congele el agua 
-            solicitarActivarRele(ETAPA_5, true, TIEMPO_BOMBA_CAL_MS);
-            solicitarActivarRele(ETAPA_6, true, TIEMPO_BOMBA_ACS_MS);
+            solicitarActivarRele(ETAPA_5, true, TIEMPO_BOMBA_ACS_MS);
+            solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
             
         }
     } else {
@@ -408,52 +549,72 @@ void verificarFalla(){
         if (obtenerPrioridadAlarma(BOMBAS_OFF) < obtenerPrioridadAlarma(causaAlarma)){
 
             causaAlarma = BOMBAS_OFF;
+            // Enciendo la alarma
+            solicitarActivarAlarma();
+            estadoControl = ALARMA;
+            // APAGO RESISTENCIAS Y BOMBAS
+            for (int i=0; i < CANT_RESISTENCIAS_TOTALES; i++){
+                solicitarDesactivarRele(i);
+            }
         }
 
-        guardarAlarmaNVS((int32_t) BOMBAS_OFF);
-        
-        // Enciendo la alarma
-        solicitarActivarAlarma();
-        estadoControl = ALARMA;
-
-        // APAGO RESISTENCIAS Y BOMBAS
-        for (int i=0; i < CANT_RESISTENCIAS; i++){
-            solicitarDesactivarRele(i);
+        if (alarmasControl[0] != (int32_t) BOMBAS_OFF && alarmasControl[1] != (int32_t) BOMBAS_OFF){
+            guardarAlarmaNVS((int32_t) BOMBAS_OFF);
         }
+
         desactivarEtapa(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
         desactivarEtapa(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
         
     }
 
     // Falla de sensores RTD
-    if (valorSensoresControl[PT100_1] == VALOR_ERROR_SENSOR
-        && (obtenerPrioridadAlarma(FALLA_SENSOR_1) < obtenerPrioridadAlarma(causaAlarma) || causaAlarma == FALLA_SENSOR_2)){
+    if (valorSensoresControl[PT100_1] == VALOR_ERROR_SENSOR){
 
-        causaAlarma = FALLA_SENSOR_1;
-        guardarAlarmaNVS((int32_t) causaAlarma);
+        // if (causaAlarma == TEMPERATURA_ALTA || causaAlarma == TEMPERATURA_BAJA){
+        //     guardarAlarmaNVS((int32_t) causaAlarma);
+        //     for (int i=0; i < CANT_RESISTENCIAS_TOTALES; i++){
+        //         solicitarDesactivarRele(i);
+        //     }
+        //     for (int i=0; i < CANT_BOMBAS; i++){
+        //         solicitarDesactivarRele(i + CANT_RESISTENCIAS_TOTALES, true, TIEMPO_APAGADO_BOMBAS_MS);
+        //     }
+        // }
 
-        // Apago el sistema de calefaccion
-        bool val = false;
-        guardarConfigsNVS(CALEFACCION_ON, &val, sizeof(val));
-        solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
+        if (obtenerPrioridadAlarma(FALLA_SENSOR_1) < obtenerPrioridadAlarma(causaAlarma) || causaAlarma == FALLA_SENSOR_2
+        || causaAlarma == TEMPERATURA_ALTA || causaAlarma == TEMPERATURA_BAJA){
+
+            causaAlarma = FALLA_SENSOR_1;
+
+            // Apago el sistema de calefaccion
+            bool val = false;
+            guardarConfigsNVS(CALEFACCION_ON, &val, sizeof(val));
+            solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
+        }
+        
+        if (alarmasControl[0] != (int32_t) FALLA_SENSOR_1 && alarmasControl[1] != (int32_t) FALLA_SENSOR_1){
+            guardarAlarmaNVS((int32_t) FALLA_SENSOR_1);
+        }
     }
     
-    if (valorSensoresControl[PT100_2] == VALOR_ERROR_SENSOR
-        && (obtenerPrioridadAlarma(FALLA_SENSOR_2) < obtenerPrioridadAlarma(causaAlarma) || causaAlarma == FALLA_SENSOR_1)){
+    if (valorSensoresControl[PT100_2] == VALOR_ERROR_SENSOR){
+
+
+        if (obtenerPrioridadAlarma(FALLA_SENSOR_2) < obtenerPrioridadAlarma(causaAlarma) || (causaAlarma == FALLA_SENSOR_1 && alarmasControl[0]!= (int32_t) FALLA_SENSOR_1)){
         
-        // Si tengo como causa de alarma el sensor 1, guardo la falla pero no cambio la causa
-        if (causaAlarma != FALLA_SENSOR_1){
-            causaAlarma = FALLA_SENSOR_2;
-        } 
-        
-        guardarAlarmaNVS((int32_t) FALLA_SENSOR_2);
-        
-        // Desactivo el circuito de acs y vuevlo a idle
-        acsOn = false;
-        if (estadoControl == ENCENDIDO_ACS){
-            estadoControl = ENCENDIDO_IDLE;
+            // Si tengo como causa de alarma el sensor 1, guardo la falla pero no cambio la causa
+            if (causaAlarma != FALLA_SENSOR_1){
+                causaAlarma = FALLA_SENSOR_2;
+            }            
+            // Desactivo el circuito de acs y vuevlo a idle
+            acsOn = false;
+            if (estadoControl == ENCENDIDO_ACS){
+                estadoControl = ENCENDIDO_IDLE;
+            }
+            solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
         }
-        solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
+        if (alarmasControl[0] != (int32_t) FALLA_SENSOR_2 && alarmasControl[1] != (int32_t) FALLA_SENSOR_2){
+            guardarAlarmaNVS((int32_t) FALLA_SENSOR_2);
+        }
     }
 
     // Si no hay flujo en ninguna bomba, pero la bomba de calefaccion esta encendida, hay fallo en la bomba de calefaccion 
@@ -523,29 +684,41 @@ void verificarFalla(){
     }
 
     // Limites de presion con la medicion del manometro
-    if (valorSensoresControl[LOOP_CORRIENTE] > LIMITE_SUP_PRESION){
+    if (valorSensoresControl[LOOP_CORRIENTE] > LIMITE_SUP_PRESION
+        && valorSensoresControl[LOOP_CORRIENTE] != VALOR_ERROR_SENSOR){
         contadorFallaPresionAlta++;
         if (contadorFallaPresionAlta > 2 && obtenerPrioridadAlarma(PRESION_ALTA) < obtenerPrioridadAlarma(causaAlarma)){
             causaAlarma = PRESION_ALTA;
-            guardarAlarmaNVS((int32_t) causaAlarma);
         }
-        } else {
-        contadorFallaPresionAlta = 0;
+        if (alarmasControl[0] != (int32_t) PRESION_ALTA && alarmasControl[1] != (int32_t) PRESION_ALTA){
+            guardarAlarmaNVS((int32_t) PRESION_ALTA);
+        }
+    } else {
+    contadorFallaPresionAlta = 0;
     }
 
-    if (valorSensoresControl[LOOP_CORRIENTE] < LIMITE_INF_PRESION){
+    if (valorSensoresControl[LOOP_CORRIENTE] < LIMITE_INF_PRESION
+        && valorSensoresControl[LOOP_CORRIENTE] != VALOR_ERROR_SENSOR){
 
         contadorFallaPresionBaja++;
 
         if (contadorFallaPresionBaja > 2 && obtenerPrioridadAlarma(PRESION_BAJA) < obtenerPrioridadAlarma(causaAlarma)){
             causaAlarma = PRESION_BAJA;
-            guardarAlarmaNVS((int32_t) causaAlarma);
         }
 
-        } else {
-        contadorFallaPresionBaja = 0;
+        if (alarmasControl[0] != (int32_t) PRESION_BAJA && alarmasControl[1] != (int32_t) PRESION_BAJA){
+            guardarAlarmaNVS((int32_t) PRESION_BAJA);
+        }
+
+    } else {
+    contadorFallaPresionBaja = 0;
     }
 
+    if (valorSensoresControl[LOOP_CORRIENTE] == VALOR_ERROR_SENSOR 
+        && obtenerPrioridadAlarma(FALLA_SENSOR_I) < obtenerPrioridadAlarma(causaAlarma)){
+        causaAlarma = FALLA_SENSOR_I;
+        guardarAlarmaNVS((int32_t) FALLA_SENSOR_I);
+    }
 }
 
 int obtenerPrioridadAlarma(causaAlarma_t causa){
@@ -554,6 +727,7 @@ int obtenerPrioridadAlarma(causaAlarma_t causa){
         return 6;
     case PRESION_ALTA:
     case PRESION_BAJA:
+    case FALLA_SENSOR_I:
         return 5;
     case BOMBA_CALEFACCION_ON:
     case BOMBA_AGUA_CALIENTE_ON:
@@ -642,7 +816,33 @@ void actualizarEtapasSalida(){
                 purgarBomba(BOMBA_ACS);
             }
             break;
-        case ALARMA: break;
+        case ALARMA: 
+            switch(causaAlarma){
+                case TEMPERATURA_ALTA:
+                    static bool fallaTempAlta = false;
+                    static int contadorFallaTempAlta = 0;
+                    static uint64_t contadorFalla = 0;
+
+                    // Si la temperatura sigue subeindo y supera el limite de emergencia,
+                    // Deberia haber saltado el termostato de seguridad
+                    // Si no lo hizo, se activa la falla desde el controlador
+                    if (valorSensoresControl[PT100_1] > TEMPERATURA_EMERGENCIA && fallaTempAlta == false){
+                        contadorFallaTempAlta++;
+                        if (contadorFallaTempAlta == 2){
+                            contarMs(&contadorFalla, TIEMPO_SEG_EMERGENCIA, LOW);
+                            forzarFalla();
+                            fallaTempAlta = true;
+                        }
+                    } else {
+                        contadorFallaTempAlta = 0;
+                    }
+                    if (contadorFalla == 0 && fallaTempAlta){
+                        fallaTempAlta = false;
+                        cortarFalla();
+                    }
+                    break;
+            }
+            break;
     }
 
     actualizarControlesAlarma();
@@ -675,7 +875,7 @@ void controlarResistencias(){
     
     // APAGADO DE RESISTENCIAS
     // Si la etapa 1 esta prendida es que seguro hay alguna prendida
-    if (etapasControl[ETAPA_1] == HIGH){
+    if (etapasControl[relesDeResistencias[0]] == HIGH){
         // Me fijo si debo apagar alguna
         for (int i=0;i<CANT_RESISTENCIAS;i++){
             // Divido la histeresis segun la cantidad de etapas 
@@ -695,8 +895,8 @@ void controlarResistencias(){
 
     // ENCENDIDO DE RESISTENCIAS
     // Sigue la logica inversa a la de apagado pero tiene el agregado de los retardos (no se prenden dos seguidas)
-    // Si la 4ta etapa esta apagada es que podria prenderse alguna
-    if (etapasControl[ETAPA_4] == LOW ){
+    // Si la ultima etapa esta apagada es que podria prenderse alguna
+    if (etapasControl[relesDeResistencias[CANT_RESISTENCIAS]] == LOW ){
         // Me fijo si debo prender alguna
         for (int i=0;i<CANT_RESISTENCIAS;i++){
             // Divido la histeresis segun la cantidad de etapas 
@@ -716,27 +916,6 @@ void controlarResistencias(){
 }
 
 void actualizarControlesAlarma(){
-    // switch(causaAlarma){
-    //     case TEMPERATURA_ALTA:
-    //         if (contadorFalla == 0){
-    //             solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
-    //             solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
-    //         }
-    //         break;
-
-    //     case TERMOSTATO_SEGURIDAD:
-
-    //         if (contadorFalla == 0){
-    //             cortarFalla();
-    //         }
-    //         else if (contadorFalla <= 1000){
-    //             solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
-    //             solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
-    //             forzarFalla();
-    //         }
-    //         break;
-
-    // }
 }
 
 void actualizarMantenimiento(){
@@ -773,3 +952,422 @@ void purgarBomba(int bomba){
         contarMs(&contadorEspera[contador],TIEMPO_PURGA_OFF + TIEMPO_PURGA_ON, LOW);
     }
 }
+
+// FUNCIONES AUXILIARES PARA TESTS
+
+#ifdef TESTING
+
+void mockingSensores(){
+    valorSensoresControl[PT100_1] = 25;
+    valorSensoresControl[PT100_2] = 25;
+    valorSensoresControl[LOOP_CORRIENTE] = 15;
+}
+
+void mockingEntradasMecanicas(){
+    estadoEntradasControl[TERMOSTATO_SEG] = LOW;
+    estadoEntradasControl[TERMOSTATO_AMB] = HIGH;
+    estadoEntradasControl[FLOW_SW_BOMBAS] = HIGH;
+    estadoEntradasControl[FLOW_SW_ACS] = HIGH;
+}
+
+void test_resistenciasApagadas(){
+    for (int i = 0; i < CANT_RESISTENCIAS_TOTALES; i++) {
+        char mensaje[50];
+        snprintf(mensaje, sizeof(mensaje), "La resistencia %d no se apago", i);
+        TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[relesDeResistencias[i]]), mensaje);
+    }
+}
+
+void test_fallaTermostatoSeguridad_forzarFalla(){
+    // FUERZO LA FALLA DEL TERMOSTATO DE SEGURIDAD
+    estadoEntradasControl[TERMOSTATO_SEG] = HIGH;
+    // HAGO RESPONDER A LA FUNCIÓN
+    verificarFalla();
+    actualizarReles();
+    actualizarBuzzer();
+}
+
+void test_fallaTermostatoSeguridad_verificarTest(){
+    // VERIFICO QUE LA GESTION HAYA SIDO CORRECTA
+    TEST_ASSERT_EQUAL_MESSAGE(ALARMA, estadoControl, "TS: El estado no es correcto");
+    TEST_ASSERT_EQUAL_MESSAGE(TERMOSTATO_SEGURIDAD, causaAlarma, "TS: La causa de alarma no es la correcta");
+    TEST_ASSERT_EQUAL_MESSAGE((int32_t) TERMOSTATO_SEGURIDAD, alarmasControl[0], "TS: La alarma no fue registrada");
+    test_resistenciasApagadas();
+    if (alarmasControl[1] == (int32_t) BOMBAS_OFF || alarmasControl[1] == (int32_t) BOMBAS_ON || alarmasControl[1] == (int32_t) BOMBA_CALEFACCION_ON){
+        TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_5]), "TS: La bomba de calefacción no debio prenderse");
+    } else {
+        TEST_ASSERT_EQUAL_MESSAGE(LOW, digitalRead(pinesReles[ETAPA_5]), "TS: La bomba de calefacción no se prendió");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_6]), "TS: La bomba de agua caliente no se apagó");
+}
+
+void test_fallaTemperaturaAlta_forzarFalla(){
+    // FUERZO LA FALLA DEL TERMOSTATO DE SEGURIDAD
+    valorSensoresControl[PT100_1] = LIMITE_SUP_TEMPERATURA + 1;
+    // HAGO RESPONDER A LA FUNCIÓN (3 veces para que detecte la falla)
+    for (int i = 0; i <= CANT_MUESTRAS_FALLA; i++){
+        verificarFalla();
+        actualizarReles();
+        actualizarBuzzer();
+    }
+}
+
+void test_fallaTemperaturaAlta_verificarTest(){
+    // VERIFICO QUE LA GESTIÓN HAYA SIDO CORRECTA
+    TEST_ASSERT_EQUAL_MESSAGE(ALARMA, estadoControl, "TA: El estado no es correcto");
+    if (alarmasControl[0] != (int32_t) TERMOSTATO_SEGURIDAD){
+        TEST_ASSERT_EQUAL_MESSAGE(TEMPERATURA_ALTA, causaAlarma, "TA: La causa de alarma no es la correcta");
+        TEST_ASSERT_EQUAL_MESSAGE((int32_t) TEMPERATURA_ALTA, alarmasControl[0], "TA: La alarma no fue registrada");
+    }
+    test_resistenciasApagadas();
+    if (alarmasControl[1] == (int32_t) BOMBAS_OFF || alarmasControl[1] == (int32_t) BOMBAS_ON || alarmasControl[1] == (int32_t) BOMBA_CALEFACCION_ON){
+        TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_5]), "TA: La bomba de calefacción no debio prenderse");
+    } else {
+        TEST_ASSERT_EQUAL_MESSAGE(LOW, digitalRead(pinesReles[ETAPA_5]), "TA: La bomba de calefacción no se prendió");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_6]), "TA: La bomba de agua caliente no se apagó");
+}
+
+void test_fallaTemperaturaBaja_forzarFalla(){
+    // FUERZO LA FALLA DEL TERMOSTATO DE SEGURIDAD
+    valorSensoresControl[PT100_1] = LIMITE_INF_TEMPERATURA - 1;
+    // HAGO RESPONDER A LA FUNCIÓN (3 veces para que detecte la falla)
+    for (int i = 0; i <= CANT_MUESTRAS_FALLA; i++){
+        verificarFalla();
+        actualizarReles();
+        actualizarBuzzer();
+    }
+}
+
+void test_fallaTemperaturaBaja_verificarTest(){
+    // VERIFICO QUE LA GESTIÓN HAYA SIDO CORRECTA
+    TEST_ASSERT_EQUAL_MESSAGE(ALARMA, estadoControl, "TB: El estado no es correcto");
+    TEST_ASSERT_EQUAL_MESSAGE(TEMPERATURA_BAJA, causaAlarma, "TB: La causa de alarma no es la correcta");
+    TEST_ASSERT_EQUAL_MESSAGE((int32_t) TEMPERATURA_BAJA, alarmasControl[0], "TB: La alarma no fue registrada");
+    for (int i = 0; i < CANT_RESISTENCIAS; i++){
+        char mensaje[50];
+        snprintf(mensaje, sizeof(mensaje), "TB: La resistencia %d no se encendió", i);
+        TEST_ASSERT_EQUAL_MESSAGE(LOW, digitalRead(pinesReles[relesDeResistencias[i]]), mensaje);
+    }
+    if (alarmasControl[1] == (int32_t) BOMBAS_OFF || alarmasControl[1] == (int32_t) BOMBAS_ON || alarmasControl[1] == (int32_t) BOMBA_CALEFACCION_ON){
+        TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_5]), "TB: La bomba de calefacción no debio prenderse");
+    } else {
+        TEST_ASSERT_EQUAL_MESSAGE(LOW, digitalRead(pinesReles[ETAPA_5]), "TB: La bomba de calefacción no se prendió");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_6]), "TB: La bomba de agua caliente no se apagó");
+}
+
+void test_fallaApagadoBombas_forzarFalla(){
+    // FUERZO LA FALLA
+    solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
+    solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
+    actualizarReles();
+    tiempoApagadoEtapasControl[ETAPA_5] = TIEMPO_APAGADO_BOMBAS_MS;
+    tiempoApagadoEtapasControl[ETAPA_6] = TIEMPO_APAGADO_BOMBAS_MS;
+    estadoEntradasControl[FLOW_SW_BOMBAS] = LOW;
+    tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] = TIEMPO_APAGADO_BOMBAS_MS;
+    verificarFalla();
+    actualizarReles();
+    actualizarBuzzer();
+}
+
+void test_fallaApagadoBombas_verificarTest(){
+    // VERIFICO QUE LA GESTIÓN HAYA SIDO CORRECTA
+    TEST_ASSERT_EQUAL_MESSAGE(ALARMA, estadoControl, "AB: El estado no es correcto");
+    if (obtenerPrioridadAlarma(BOMBAS_OFF) < obtenerPrioridadAlarma(causaAlarma)){
+        TEST_ASSERT_EQUAL_MESSAGE(BOMBAS_OFF, causaAlarma, "AB: La causa de alarma no es la correcta");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE((int32_t) BOMBAS_OFF, alarmasControl[0], "AB: La alarma no fue registrada");
+    if (alarmasControl[1] != TEMPERATURA_BAJA){
+        test_resistenciasApagadas();
+    }
+    TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_5]), "AB: La bomba de calefacción no se apagó");
+    TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_6]), "AB: La bomba de agua caliente no se apagó");
+}
+
+void test_fallaSensorCaldera_forzarFalla(){
+    // FUERZO LA FALLA DE SENSOR DE CALDERA
+    valorSensoresControl[PT100_1] = VALOR_ERROR_SENSOR;
+    verificarFalla();
+    actualizarReles();
+    actualizarBuzzer();
+}
+
+void test_fallaSensorCaldera_verificarTest(){
+    // VERIFICO QUE LA GESTIÓN HAYA SIDO CORRECTA
+    if (obtenerPrioridadAlarma(FALLA_SENSOR_1) < obtenerPrioridadAlarma(causaAlarma)){
+        TEST_ASSERT_EQUAL_MESSAGE(FALLA_SENSOR_1, causaAlarma, "S1: La causa de alarma no es la correcta");
+        TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_5]), "S1: La bomba de calefacción no se apagó");
+        TEST_ASSERT_EQUAL_MESSAGE(false, configuracionesControl->calefaccionOn, "S1: No se apagó la calefacción");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE((int32_t) FALLA_SENSOR_1, alarmasControl[0], "S1: La alarma no fue registrada");
+}
+
+void test_fallaSensorACS_forzarFalla(){
+    // FUERZO LA FALLA DE SENSOR DE ACS
+    valorSensoresControl[PT100_2] = VALOR_ERROR_SENSOR;
+    verificarFalla();
+    actualizarReles();
+    actualizarBuzzer();
+}
+
+void test_fallaSensorACS_verificarTest(){
+    // VERIFICO QUE LA GESTIÓN HAYA SIDO CORRECTA
+    if (obtenerPrioridadAlarma(FALLA_SENSOR_2) < obtenerPrioridadAlarma(causaAlarma)){
+        TEST_ASSERT_EQUAL_MESSAGE(FALLA_SENSOR_2, causaAlarma, "S2: La causa de alarma no es la correcta");
+        TEST_ASSERT_EQUAL_MESSAGE(false, acsOn, "S2: No se apagó el agua caliente");
+        TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_6]), "S2: La bomba de agua caliente no se apagó");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE((int32_t) FALLA_SENSOR_2, alarmasControl[0], "S2: La alarma no fue registrada");
+}
+
+void test_fallaEncendidoBombaCalefaccion_forzarFalla(){
+    // FUERZO LA FALLA DE LA BOMBA DE CALEFACCION
+    solicitarActivarRele(ETAPA_5, true, TIEMPO_BOMBA_CAL_MS);
+    actualizarReles();
+    tiempoEncendidoEtapasControl[ETAPA_5] = TIEMPO_BOMBA_CAL_MS;
+    estadoEntradasControl[FLOW_SW_BOMBAS] = HIGH;
+    tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] = TIEMPO_BOMBA_CAL_MS;
+    verificarFalla();
+    actualizarReles();
+    actualizarBuzzer();
+}
+
+void test_fallaEncendidoBombaCalefaccion_verificarTest(){
+    // VERIFICO QUE LA GESTIÓN HAYA SIDO CORRECTA
+    if (obtenerPrioridadAlarma(BOMBA_CALEFACCION_ON) < obtenerPrioridadAlarma(causaAlarma)){
+        TEST_ASSERT_EQUAL_MESSAGE(BOMBA_CALEFACCION_ON, causaAlarma, "BC: La causa de alarma no es la correcta");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE((int32_t) BOMBA_CALEFACCION_ON, alarmasControl[0], "BC: La alarma no fue registrada");
+    TEST_ASSERT_EQUAL_MESSAGE(false, configuracionesControl->calefaccionOn, "BC: No se apagó la calefacción");
+    TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_5]), "BC: La bomba de calefacción no se apagó");
+}
+
+void test_fallaEncendidoBombaACS_forzarFalla(){
+    // FUERZO LA FALLA DE LA BOMBA DE ACS
+    solicitarActivarRele(ETAPA_6, true, TIEMPO_BOMBA_ACS_MS);
+    actualizarReles();
+    tiempoEncendidoEtapasControl[ETAPA_6] = TIEMPO_BOMBA_ACS_MS;
+    estadoEntradasControl[FLOW_SW_BOMBAS] = HIGH;
+    tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] = TIEMPO_BOMBA_ACS_MS;
+    verificarFalla();
+    actualizarReles();
+    actualizarBuzzer();
+}
+
+void test_fallaEncendidoBombaACS_verificarTest(){
+    // VERIFICO QUE LA GESTIÓN HAYA SIDO CORRECTA
+    if (obtenerPrioridadAlarma(BOMBA_AGUA_CALIENTE_ON) < obtenerPrioridadAlarma(causaAlarma)){
+        TEST_ASSERT_EQUAL_MESSAGE(BOMBA_AGUA_CALIENTE_ON, causaAlarma, "BA: La causa de alarma no es la correcta");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE((int32_t) BOMBA_AGUA_CALIENTE_ON, alarmasControl[0], "BA: La alarma no fue registrada");
+    TEST_ASSERT_EQUAL_MESSAGE(false, acsOn, "BA: No se apagó el agua caliente");
+    TEST_ASSERT_EQUAL_MESSAGE(HIGH, digitalRead(pinesReles[ETAPA_6]), "BA: La bomba de agua caliente no se apagó");
+}
+
+void test_fallaPresionAlta_forzarFalla(){
+    // FUERZO LA FALLA DE PRESION ALTA
+    valorSensoresControl[LOOP_CORRIENTE] = LIMITE_SUP_PRESION + 1;
+    for (int i=0; i <= CANT_MUESTRAS_FALLA; i++){
+        verificarFalla();
+        actualizarReles();
+        actualizarBuzzer();
+    }
+}
+
+void test_fallaPresionAlta_verificarTest(){
+    // VERIFICO QUE LA GESTIÓN HAYA SIDO CORRECTA
+    if (obtenerPrioridadAlarma(PRESION_ALTA) < obtenerPrioridadAlarma(causaAlarma)){
+        TEST_ASSERT_EQUAL_MESSAGE(PRESION_ALTA, causaAlarma, "PA: La causa de alarma no es la correcta");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE((int32_t) PRESION_ALTA, alarmasControl[0], "PA: La alarma no fue registrada");
+}
+
+void test_fallaPresionBaja_forzarFalla(){
+    // FUERZO LA FALLA DE PRESION BAJA
+    valorSensoresControl[LOOP_CORRIENTE] = LIMITE_INF_PRESION - 1;
+    for (int i=0; i <= CANT_MUESTRAS_FALLA; i++){
+        verificarFalla();
+        actualizarReles();
+        actualizarBuzzer();
+    }
+}
+
+void test_fallaPresionBaja_verificarTest(){
+    // VERIFICO QUE LA GESTIÓN HAYA SIDO CORRECTA
+    if (obtenerPrioridadAlarma(PRESION_BAJA) < obtenerPrioridadAlarma(causaAlarma)){
+        TEST_ASSERT_EQUAL_MESSAGE(PRESION_BAJA, causaAlarma, "PB: La causa de alarma no es la correcta");
+    }
+    TEST_ASSERT_EQUAL_MESSAGE((int32_t) PRESION_BAJA, alarmasControl[0], "PB: La alarma no fue registrada");
+}
+
+void test_gestionFallas(void (*forzarFalla)(), void (*testearRespuesta)(), const bool* tests){
+    static const bool defaultTest[] = {true, true, true, true, true};
+
+    // Si no se pasa el parámetro, usar el arreglo por defecto.
+    if (tests == nullptr) {
+        tests = defaultTest;
+    }
+
+    if (tests[0]){
+        // delay(1000);
+        estadoControl = APAGADO;
+        forzarFalla();
+        // delay(1000);
+        RUN_TEST(testearRespuesta);
+    }
+
+    // delay(1000);
+    if (tests[1]){
+        estadoControl = ENCENDIDO_IDLE;
+        estadoEntradasControl[TERMOSTATO_AMB] = LOW;
+        actualizarControles();
+        actualizarReles();
+        estadoEntradasControl[FLOW_SW_BOMBAS] = LOW;
+        // delay(1000);
+        forzarFalla();
+        // delay(1000);
+        RUN_TEST(testearRespuesta);
+    }
+    
+    
+    // delay(1000);
+    if (tests[2]){
+        estadoControl = ENCENDIDO_IDLE;
+        bool calOn = false;
+        guardarConfigsNVS(CALEFACCION_ON, &calOn, sizeof(calOn));
+        // delay(1000);
+        forzarFalla();
+        // delay(1000);
+        RUN_TEST(testearRespuesta);
+    }
+    
+    
+    // delay(1000);
+    if (tests[3]){
+        estadoControl = ENCENDIDO_ACS;
+        solicitarActivarRele(ETAPA_6, true, TIEMPO_BOMBA_ACS_MS);
+        actualizarControles();
+        actualizarReles();
+        estadoEntradasControl[FLOW_SW_BOMBAS] = LOW;
+        // delay(1000);
+        forzarFalla();
+        // delay(1000);
+        RUN_TEST(testearRespuesta);
+    }
+    
+    
+    // delay(1000);
+    if (tests[4]){
+        estadoControl = DIAGNOSTICO;
+        // delay(1000);
+        forzarFalla();
+        // delay(1000);
+        RUN_TEST(testearRespuesta);
+    }
+    // delay(1000);
+    
+}
+
+void test_superposicionFallas(void (*fallaPrimera)(), const bool* tests){
+    static const bool defaultTest[] = {true, true, true, true, true, true, true, true, true, true};
+
+    // Si no se pasa el parámetro, usar el arreglo por defecto.
+    if (tests == nullptr) {
+        tests = defaultTest;
+    }
+
+    causaAlarma_t primeraCausa;
+
+    // delay(1000);
+    if(tests[0]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaTermostatoSeguridad_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaTermostatoSeguridad_verificarTest);
+    }
+
+    // delay(1000);
+    if(tests[1]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaTemperaturaAlta_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaTemperaturaAlta_verificarTest);
+    }
+
+    // delay(1000);
+    if(tests[2]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaTemperaturaBaja_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaTemperaturaBaja_verificarTest);
+    }
+    
+    // delay(1000);
+    if(tests[3]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaApagadoBombas_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaApagadoBombas_verificarTest);
+    }
+    
+    // delay(1000);
+    if(tests[4]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaSensorCaldera_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaSensorCaldera_verificarTest);
+    }
+    
+    // delay(1000);
+    if(tests[5]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaSensorACS_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaSensorACS_verificarTest);
+    }
+    
+    // delay(1000);
+    if(tests[6]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaEncendidoBombaCalefaccion_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaEncendidoBombaCalefaccion_verificarTest);
+    }
+    
+    // delay(1000);
+    if(tests[7]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaEncendidoBombaACS_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaEncendidoBombaACS_verificarTest);
+    }
+    
+    // delay(1000);
+    if(tests[8]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaPresionAlta_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaPresionAlta_verificarTest);
+    }
+    
+    // delay(1000);
+    if(tests[9]){
+        fallaPrimera();
+        // delay(1000);
+        test_fallaPresionBaja_forzarFalla();
+        // delay(1000);
+        RUN_TEST(test_fallaPresionBaja_verificarTest);
+    }  
+}
+
+#endif
