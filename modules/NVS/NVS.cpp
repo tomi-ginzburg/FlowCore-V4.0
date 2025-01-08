@@ -69,7 +69,8 @@ void inicializarNVS(){
     bool clavesGuardadas[CANT_ID];
 
     // Obtengo los que ya estan guardados
-    nvs.begin("Configs", false);
+    nvs.begin("Configs", true);
+    // nvs.begin("Configs", false);
     // nvs.clear();
     for (int i = 0; i < CANT_ID; i++) {
         clavesGuardadas[i] = nvs.isKey(parametros[i].clave);
@@ -85,7 +86,8 @@ void inicializarNVS(){
         }
     }
 
-    nvs.begin("Alarmas", false);
+    nvs.begin("Alarmas", true);
+    // nvs.begin("Alarmas", false);
     // nvs.clear();
     for (int i=0; i < CANT_ALARMAS; i++){
         // Creo las claves

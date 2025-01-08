@@ -121,7 +121,7 @@ void controlar(void * parameters){
         actualizarEntradasMecanicas();
         actualizarControles();
         actualizarReles();
-        actualizarBuzzer();
+        // actualizarBuzzer();
 
       // cycleCounter = time_meter_us_get();
 
@@ -182,8 +182,8 @@ void setup(){
     size_t totalHeap = ESP.getHeapSize();
     size_t freeHeap = xPortGetFreeHeapSize();
 
-    Serial.printf("Total Heap Size: %d bytes\n", totalHeap);
-    Serial.printf("Free Heap Size: %d bytes\n", freeHeap);
+    // Serial.printf("Total Heap Size: %d bytes\n", totalHeap);
+    // Serial.printf("Free Heap Size: %d bytes\n", freeHeap);
     
     xTaskCreate(medir, "Task 1", 4000, NULL, 3, NULL);
     xTaskCreate(controlar, "Task 2", 5000, NULL, 2, NULL);

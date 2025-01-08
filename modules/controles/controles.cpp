@@ -431,7 +431,7 @@ void actualizarEstadoAlarma(){
 
             if (valorSensoresControl[PT100_1] < LIMITE_SUP_TEMPERATURA && valorSensoresControl[PT100_1] != VALOR_ERROR_SENSOR){
                 causaAlarma = NO_FALLA;
-                estadoControl = ENCENDIDO_IDLE;
+                estadoControl = APAGADO;
 
                 solicitarDesactivarAlarma();
                 solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
@@ -443,7 +443,7 @@ void actualizarEstadoAlarma(){
         case TEMPERATURA_BAJA:
             if (valorSensoresControl[PT100_1] > LIMITE_INF_TEMPERATURA && valorSensoresControl[PT100_1] != VALOR_ERROR_SENSOR){
                 causaAlarma = NO_FALLA;
-                estadoControl = ENCENDIDO_IDLE;
+                estadoControl = APAGADO;
             
                 solicitarDesactivarAlarma();
                 // Como estan todas las resistencias prendidas, si no hay ningun modo prendido las apago

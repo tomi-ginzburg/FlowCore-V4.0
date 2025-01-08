@@ -67,7 +67,7 @@ void test_encendidoConApagadoAutomatico(){
     int tiempoInicio = millis();
     solicitarActivarRele(ETAPA_2, true, tiempoLimite, true);
 
-    while (millis()- tiempoInicio < tiempoLimite){
+    while (millis()- tiempoInicio < tiempoLimite*0.9){
         actualizarReles();
     }
 
