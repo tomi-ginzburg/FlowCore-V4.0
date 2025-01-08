@@ -23,7 +23,7 @@ enum { SCREENBUFFER_SIZE_PIXELS = screenWidth * screenHeight / 10 };
 static lv_color_t buf [SCREENBUFFER_SIZE_PIXELS];
 
 TFT_eSPI tft = TFT_eSPI( screenWidth, screenHeight ); 
-TFT_eSprite sprite = TFT_eSprite(&tft);
+// TFT_eSprite sprite = TFT_eSprite(&tft);
 
 // const int *estadoEntradasUI;
 const bool *etapasUI;
@@ -77,7 +77,7 @@ void inicializarDisplay(){
 
     tft.begin();
     // spix = tft.getSPIinstance();
-    tft.setRotation(1);
+    tft.setRotation(3);
 
     // sprite.createSprite(200, 200);
     // Serial.print("ANCHO SPRITE: ");
@@ -150,7 +150,7 @@ void my_disp_flush (lv_display_t *disp, const lv_area_t *area, uint8_t *pixelmap
 void my_touchpad_read (lv_indev_t * indev_driver, lv_indev_data_t * data){
     uint16_t touchX = 0, touchY = 0;
 
-    bool touched = tft.getTouch( &touchX, &touchY, 50 );
+    bool touched = tft.getTouch( &touchX, &touchY, 50);
 
     if (!touched)
     {
@@ -205,26 +205,7 @@ void inicializarValores(){
 }
 
 void inicializarValoresPantallaPrincipal(){
-
-  if (configuracionesUI->encendidoOn == false){
-		lv_obj_set_style_bg_color(ui_Button4, lv_color_hex(0x39009C), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_Panel2, lv_color_hex(0x39009C), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_Panel3, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui_SimboloPower, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-	}
-	else {
-		lv_obj_set_style_bg_color(ui_Button4, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_Panel2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_Panel3, lv_color_hex(0x39009C), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui_SimboloPower, lv_color_hex(0x39009C), LV_PART_MAIN | LV_STATE_DEFAULT);
-	}
-
-  // INICIO EL ESTADO DEL SWITCH DE CALEFACCION
-  // if (configuracionesUI->calefaccionOn == false){
-  //   lv_obj_clear_state(ui_SwitchCalefaccion, LV_STATE_CHECKED);
-  // } else {
-  //   lv_obj_add_state(ui_SwitchCalefaccion, LV_STATE_CHECKED);
-  // }
+  lv_obj_add_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN);
 }
 
 void inicializarValoresConfiguracionesUsuario(){
@@ -241,8 +222,8 @@ void inicializarValoresAlarmas(){
 
 void inicializarValoresDiagnostico(){
   if (configuracionesUI->diagnosticoOn){
-    lv_obj_add_state(ui_Switch1, LV_STATE_CHECKED);
-		lv_obj_clear_flag(ui_Label24, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_state(ui_CheckboxDiagnostico, LV_STATE_CHECKED);
+		lv_obj_clear_flag(ui_LabelDiagnosticoPrincipal, LV_OBJ_FLAG_HIDDEN);
     
 		lv_obj_add_flag(ui_BotonEtapa1, LV_OBJ_FLAG_CLICKABLE);
 		lv_obj_add_flag(ui_BotonEtapa2, LV_OBJ_FLAG_CLICKABLE);
@@ -250,7 +231,8 @@ void inicializarValoresDiagnostico(){
 		lv_obj_add_flag(ui_BotonEtapa4, LV_OBJ_FLAG_CLICKABLE);
 		lv_obj_add_flag(ui_BotonPurga, LV_OBJ_FLAG_CLICKABLE);
 		lv_obj_add_flag(ui_BotonPurga1, LV_OBJ_FLAG_CLICKABLE);
-
+  } else {
+    lv_obj_add_flag(ui_LabelDiagnosticoPrincipal, LV_OBJ_FLAG_HIDDEN);
   }
 }
 
@@ -277,7 +259,7 @@ void actualizarValores(){
 
     // VEO EN QUE PANTALLA ESTOY Y LA ACTUALIZO
 
-    if (pantalla_activa == ui_Principal){
+    if (pantalla_activa == ui_Principal2){
         actualizarValoresPantallaPrincipal();
     }
     else if (pantalla_activa == ui_ConfiguracionesUsuario){
@@ -290,111 +272,95 @@ void actualizarValores(){
       actualizarValoresPantallaAlertas();
     }  
    else if (pantalla_activa == ui_Inicio){
-      lv_disp_load_scr(ui_Principal);
+      lv_disp_load_scr(ui_Principal2);
     }  
 
 
 }
 
 void actualizarValoresPantallaPrincipal(){
-        char buffer[10];
-        bool checked;
+  char buffer[10];
+  bool checked;
 
-        // VALOR DE TEMPERATURA
-        if (*causaAlarmaUI != FALLA_SENSOR_1 && *estadoControlUI != ENCENDIDO_ACS && *estadoControlUI != APAGADO && valorSensoresUI[PT100_1] != VALOR_ERROR_SENSOR){
-          snprintf(buffer, sizeof(buffer), "%.1f °C", valorSensoresUI[PT100_1]);
-          lv_label_set_text(ui_LabelTempACS, buffer);
-          lv_arc_set_value(ui_ArcTemp, valorSensoresUI[PT100_1]);
-        } else if (*estadoControlUI == ENCENDIDO_ACS){
-          snprintf(buffer, sizeof(buffer), "%.1f °C", valorSensoresUI[PT100_2]);
-          lv_label_set_text(ui_LabelTempACS, buffer);
-          lv_arc_set_value(ui_ArcTemp, valorSensoresUI[PT100_2]);
-        } else {
-          snprintf(buffer, sizeof(buffer), "--- °C");
-          lv_label_set_text(ui_LabelTempACS, buffer);
-          lv_arc_set_value(ui_ArcTemp, 0);
-        }
+  // VALOR DE TEMPERATURA
+  if (*causaAlarmaUI != FALLA_SENSOR_1 && *estadoControlUI != ENCENDIDO_ACS && *estadoControlUI != APAGADO && valorSensoresUI[PT100_1] != VALOR_ERROR_SENSOR){
+    snprintf(buffer, sizeof(buffer), "%.1f °C", valorSensoresUI[PT100_1]);
+    lv_label_set_text(ui_LabelTemperatura, buffer);
+    lv_arc_set_value(ui_ArcTemp2, valorSensoresUI[PT100_1]);
+  } else if (*estadoControlUI == ENCENDIDO_ACS){
+    snprintf(buffer, sizeof(buffer), "%.1f °C", valorSensoresUI[PT100_2]);
+    lv_label_set_text(ui_LabelTemperatura, buffer);
+    lv_arc_set_value(ui_ArcTemp2, valorSensoresUI[PT100_2]);
+  } else {
+    snprintf(buffer, sizeof(buffer), "--- °C");
+    lv_label_set_text(ui_LabelTemperatura, buffer);
+    lv_arc_set_value(ui_ArcTemp2, 0);
+  }
 
-        // VALOR DE PRESION
-        if (*estadoControlUI != APAGADO){
-          snprintf(buffer, sizeof(buffer), "%.1fmA", valorSensoresUI[LOOP_CORRIENTE]);
-          lv_label_set_text(ui_LabelPresion, buffer);
-          lv_bar_set_value(ui_BarPresion, valorSensoresUI[LOOP_CORRIENTE], LV_ANIM_ON);
-        } else {
-          snprintf(buffer, sizeof(buffer), "---", valorSensoresUI[LOOP_CORRIENTE]);
-          lv_label_set_text(ui_LabelPresion, buffer);
-          lv_bar_set_value(ui_BarPresion, 0, LV_ANIM_ON);
-        }
+  // VALOR DE PRESION
+  if (*estadoControlUI != APAGADO){
+    snprintf(buffer, sizeof(buffer), "%.1f psi", valorSensoresUI[LOOP_CORRIENTE]);
+    lv_label_set_text(ui_LabelPresion2, buffer);
+  } else {
+    snprintf(buffer, sizeof(buffer), "--- psi", valorSensoresUI[LOOP_CORRIENTE]);
+    lv_label_set_text(ui_LabelPresion2, buffer);
+  }
 
-        // INDICADORES CALEFACCION Y ACS
-      if (etapasUI[ETAPA_5] == HIGH && lv_obj_has_flag(ui_IndicadorCalefaccion, LV_OBJ_FLAG_HIDDEN)){
-          lv_obj_remove_flag(ui_IndicadorCalefaccion, LV_OBJ_FLAG_HIDDEN);
-        }
+  // INDICADORES CALEFACCION Y ACS
+  if (etapasUI[ETAPA_5] == HIGH && lv_image_get_src(ui_ImageCal) != &ui_img_icono_calefaccion_encendida_png){
+    lv_image_set_src(ui_ImageCal, &ui_img_icono_calefaccion_encendida_png);
+  }
 
-        else if (etapasUI[ETAPA_5] == LOW && !lv_obj_has_flag(ui_IndicadorCalefaccion, LV_OBJ_FLAG_HIDDEN)){
-          lv_obj_add_flag(ui_IndicadorCalefaccion, LV_OBJ_FLAG_HIDDEN);
-        }
+  else if (etapasUI[ETAPA_5] == LOW && lv_image_get_src(ui_ImageCal) != &ui_img_icono_calefaccion_apagada_png){
+    lv_image_set_src(ui_ImageCal, &ui_img_icono_calefaccion_apagada_png);
+  }
 
-        if (etapasUI[ETAPA_6] == HIGH && lv_obj_has_flag(ui_IndicadorACS, LV_OBJ_FLAG_HIDDEN)){
-          lv_obj_remove_flag(ui_IndicadorACS, LV_OBJ_FLAG_HIDDEN);
-        }
+  if (etapasUI[ETAPA_6] == HIGH && lv_image_get_src(ui_ImageAcs) != &ui_img_icono_acs_encendida_png){
+    lv_image_set_src(ui_ImageAcs, &ui_img_icono_acs_encendida_png);
+  }
 
-        else if (etapasUI[ETAPA_6] == LOW && !lv_obj_has_flag(ui_IndicadorACS, LV_OBJ_FLAG_HIDDEN)){
-          lv_obj_add_flag(ui_IndicadorACS, LV_OBJ_FLAG_HIDDEN);
-        }
-        
+  else if (etapasUI[ETAPA_6] == LOW && lv_image_get_src(ui_ImageAcs) != &ui_img_icono_acs_apagada_png){
+    lv_image_set_src(ui_ImageAcs, &ui_img_icono_acs_apagada_png);
+  }
+  // BOTON PARA PANTALLA DE ALARMA
+  if (*causaAlarmaUI != NO_FALLA && lv_obj_has_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN)){
+    lv_obj_clear_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(ui_LabelError, obtenerLabelAlarma(*causaAlarmaUI));
+    lv_label_set_text(ui_LabelAclaracion, obtenerLabelAclaracionAlarma(*causaAlarmaUI));
+  }
 
-        // CALEFACCION ON/OFF
-        
-        // Activo o desactivo el switch segun si la calefaccion esta encendida o no
-        if (lv_obj_has_flag(ui_SwitchCalefaccion, LV_OBJ_FLAG_CLICKABLE) && (*estadoControlUI == APAGADO || *estadoControlUI == ALARMA)){
-            lv_obj_remove_flag(ui_SwitchCalefaccion, LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_clear_state(ui_SwitchCalefaccion, LV_STATE_CHECKED);
-        }
-        else if (!lv_obj_has_flag(ui_SwitchCalefaccion, LV_OBJ_FLAG_CLICKABLE) && *estadoControlUI != APAGADO && *estadoControlUI != ALARMA){
-            if (*causaAlarmaUI != BOMBA_CALEFACCION_ON && *causaAlarmaUI != FALLA_SENSOR_1){
-              lv_obj_add_flag(ui_SwitchCalefaccion, LV_OBJ_FLAG_CLICKABLE);
-            }
-            
-            if (configuracionesUI->calefaccionOn){
-              lv_obj_add_state(ui_SwitchCalefaccion, LV_STATE_CHECKED);
-            }
-        }
+  if (*causaAlarmaUI == NO_FALLA && !lv_obj_has_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN)){
+    lv_obj_add_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN);
+  }
 
-        // Si el switch esta en ON pero la calefaccion estaba apagada, la cambio
-        if (lv_obj_has_state(ui_SwitchCalefaccion, LV_STATE_CHECKED) && configuracionesUI->calefaccionOn == false){
-            lv_obj_clear_state(ui_SwitchCalefaccion, LV_STATE_CHECKED);
-            // Si se apago por la causa de alarma
-            if (*causaAlarmaUI == BOMBA_CALEFACCION_ON || *causaAlarmaUI == BOMBAS_OFF || *causaAlarmaUI == BOMBAS_ON || *causaAlarmaUI == FALLA_SENSOR_1){
-              lv_obj_remove_flag(ui_SwitchCalefaccion, LV_OBJ_FLAG_CLICKABLE);
-              lv_obj_set_style_bg_color(ui_SwitchCalefaccion, lv_color_hex(0xC52222), LV_PART_MAIN | LV_STATE_DEFAULT);
-            }
-        }
-
-        // BOTON PARA PANTALLA DE ALARMA
-        if (*causaAlarmaUI != NO_FALLA && lv_obj_has_flag(ui_Button2, LV_OBJ_FLAG_HIDDEN)){
-          lv_obj_remove_flag(ui_Button2, LV_OBJ_FLAG_HIDDEN);
-          lv_label_set_text(ui_LabelError, obtenerLabelAlarma(*causaAlarmaUI));
-          lv_label_set_text(ui_LabelAclaracion, obtenerLabelAclaracionAlarma(*causaAlarmaUI));
-        }
-
-        if (*causaAlarmaUI == NO_FALLA && !lv_obj_has_flag(ui_Button2, LV_OBJ_FLAG_HIDDEN)){
-          lv_obj_add_flag(ui_Button2, LV_OBJ_FLAG_HIDDEN);
-        }
-
-        // BOTON DE ENCENDIDO
-        static bool primeraEntrada = true;
-        if (*causaAlarmaUI == TERMOSTATO_SEGURIDAD && primeraEntrada){
-          lv_obj_remove_event_cb(ui_Button4, ui_event_Button4);
-          lv_obj_add_event_cb(ui_Button4, ui_event_Button4, LV_EVENT_LONG_PRESSED, NULL);
-          lv_obj_set_style_bg_color(ui_Button4, lv_color_hex(0xC52222), LV_PART_MAIN | LV_STATE_DEFAULT);
-	        lv_obj_set_style_text_color(ui_SimboloPower, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-          primeraEntrada = false;
-        }
 }
 
 void actualizarValoresConfiguracionesUsuario(){
+  // CALEFACCION ON/OFF
+  // Activo o desactivo el switch segun si la calefaccion esta encendida o no
+  if (lv_obj_has_flag(ui_ButtonCalefaccion, LV_OBJ_FLAG_CLICKABLE) && (*estadoControlUI == APAGADO || *estadoControlUI == ALARMA)){
+    lv_obj_remove_flag(ui_ButtonCalefaccion, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_state(ui_ButtonCalefaccion, LV_STATE_CHECKED);
+  }
+  else if (!lv_obj_has_flag(ui_ButtonCalefaccion, LV_OBJ_FLAG_CLICKABLE) && *estadoControlUI != APAGADO && *estadoControlUI != ALARMA){
+    if (*causaAlarmaUI != BOMBA_CALEFACCION_ON && *causaAlarmaUI != FALLA_SENSOR_1){
+      lv_obj_add_flag(ui_ButtonCalefaccion, LV_OBJ_FLAG_CLICKABLE);
+    }
+    
+    if (configuracionesUI->calefaccionOn){
+      lv_obj_add_state(ui_ButtonCalefaccion, LV_STATE_CHECKED);
+    }
+  }
 
+  // Si el switch esta en ON pero la calefaccion estaba apagada, la cambio
+  if (lv_obj_has_state(ui_ButtonCalefaccion, LV_STATE_CHECKED) && configuracionesUI->calefaccionOn == false){
+    lv_obj_clear_state(ui_ButtonCalefaccion, LV_STATE_CHECKED);
+    // Si se apago por la causa de alarma
+    if (*causaAlarmaUI == BOMBA_CALEFACCION_ON || *causaAlarmaUI == BOMBAS_OFF || *causaAlarmaUI == BOMBAS_ON || *causaAlarmaUI == FALLA_SENSOR_1){
+      lv_obj_remove_flag(ui_ButtonCalefaccion, LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_set_style_bg_color(ui_ButtonCalefaccion, lv_color_hex(0xC52222), LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+  }
 }
 
 void actualizarValoresPantallaAlertas(){
