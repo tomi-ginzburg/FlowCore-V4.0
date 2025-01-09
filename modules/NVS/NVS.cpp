@@ -138,11 +138,20 @@ void guardarAlarmaNVS(int32_t causa){
 
     // Guardar las alarmas en NVS
     nvs.begin("Alarmas", false);
-        for (int i = 0; i < CANT_ALARMAS; i++) {
-            nvs.putInt(clavesAlarma[i], alarmas[i]);
-        }
+    for (int i = 0; i < CANT_ALARMAS; i++) {
+        nvs.putInt(clavesAlarma[i], alarmas[i]);
+    }
     nvs.end();
     
+}
+
+void borrarAlarmasNVS(){
+    nvs.begin("Alarmas", false);
+    for (int i=0; i < CANT_ALARMAS; i++){
+        nvs.putInt(clavesAlarma[i],(int32_t) 0);
+        alarmas[i] = 0;
+    }
+    nvs.end();
 }
 
 const Configs* obtenerConfiguracionesNVS(){

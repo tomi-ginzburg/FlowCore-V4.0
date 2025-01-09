@@ -76,6 +76,8 @@ void guardarConfigsNVS(enum ConfigID id, void* valor, size_t largoDato);
  */
 void guardarAlarmaNVS(int32_t causa);
 
+
+void borrarAlarmasNVS();
 /*
  * pre: -
  * post: devuelve puntero constante a configuraciones
