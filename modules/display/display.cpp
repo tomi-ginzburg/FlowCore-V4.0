@@ -45,6 +45,7 @@ static uint32_t my_tick_get_cb ();
 // Funciones para la inicializacion de los widgets
 void inicializarValores();
 void inicializarValoresPantallaPrincipal();
+void actualizarValoresPantallaApagado();
 void inicializarValoresConfiguracionesUsuario();
 void inicializarValoresConfiguracionesAvanzadas();
 void inicializarValoresAlarmas();
@@ -55,6 +56,7 @@ void actualizarValores();
 void actualizarValoresPantallaPrincipal();
 void actualizarValoresConfiguracionesUsuario();
 void actualizarValoresConfiguracionesAvanzadas();
+void actualizarValoresPantallaAlarmas();
 void actualizarValoresPantallaAlertas();
 
 const char* obtenerLabelAlarma(causaAlarma_t causa);
@@ -78,12 +80,6 @@ void inicializarDisplay(){
     tft.begin();
     // spix = tft.getSPIinstance();
     tft.setRotation(3);
-
-    // sprite.createSprite(200, 200);
-    // Serial.print("ANCHO SPRITE: ");
-    // Serial.println(sprite.width());
-    // Serial.print("ALTO SPRITE: ");
-    // Serial.println(sprite.height());
 
     // Si nunca se calibro, se realiza la calibracion, sino se cargan los valores en memoria
     if (configuracionesUI->calibracion == false){
@@ -150,7 +146,7 @@ void my_disp_flush (lv_display_t *disp, const lv_area_t *area, uint8_t *pixelmap
 void my_touchpad_read (lv_indev_t * indev_driver, lv_indev_data_t * data){
     uint16_t touchX = 0, touchY = 0;
 
-    bool touched = tft.getTouch( &touchX, &touchY, 50);
+    bool touched = tft.getTouch( &touchX, &touchY, 20);
 
     if (!touched)
     {
@@ -174,13 +170,11 @@ void touch_calibrate(){
 
   // Calibrate
   tft.fillScreen(TFT_BLACK);
-  tft.setCursor(10, 120);
-  tft.setTextFont(1);
+  tft.setCursor(20, 140);
+  // tft.setTextFont(1);
   tft.setTextSize(2);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.println("Tocar las esquinas segun las flechas");
-  tft.setTextFont(2);
-  tft.println();
 
   tft.calibrateTouch(datosCalibracion, TFT_MAGENTA, TFT_BLACK, 15);
   guardarConfigsNVS(CAL_DATA, datosCalibracion, sizeof(datosCalibracion));
@@ -206,10 +200,15 @@ void inicializarValores(){
 
 void inicializarValoresPantallaPrincipal(){
   lv_obj_add_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui_ButtonAlarma2, LV_OBJ_FLAG_HIDDEN);
 }
 
 void inicializarValoresConfiguracionesUsuario(){
-
+  if (configuracionesUI->calefaccionOn){
+    lv_obj_add_state(ui_ButtonCalefaccion, LV_STATE_CHECKED);
+  } else {
+    lv_obj_clear_state(ui_ButtonCalefaccion, LV_STATE_CHECKED);
+  }
 }
 
 void inicializarValoresConfiguracionesAvanzadas(){
@@ -217,7 +216,10 @@ void inicializarValoresConfiguracionesAvanzadas(){
 }
 
 void inicializarValoresAlarmas(){
-
+  if (alarmasUI[0] == 0){ 
+    lv_obj_add_flag(ui_PanelAlarmas, LV_OBJ_FLAG_HIDDEN);
+  }
+    
 }
 
 void inicializarValoresDiagnostico(){
@@ -247,20 +249,24 @@ void actualizarValores(){
     if ( *causaAlarmaUI != alarmaAnterior ){
 
       alarmaAnterior = *causaAlarmaUI;
+      lv_label_set_text(ui_LabelError, obtenerLabelAlarma(*causaAlarmaUI));
+      lv_label_set_text(ui_LabelAclaracion, obtenerLabelAclaracionAlarma(*causaAlarmaUI));
       if (*causaAlarmaUI != NO_FALLA){
         // Si es por el apagado de las bombas doy la opcion de reset
         if (*causaAlarmaUI == BOMBAS_OFF || *causaAlarmaUI == BOMBAS_ON){
               lv_label_set_text(ui_Label12, "Reset");
         }
-
         _ui_screen_change(&ui_Alertas, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Alertas_screen_init);
       }
     }
 
     // VEO EN QUE PANTALLA ESTOY Y LA ACTUALIZO
 
-    if (pantalla_activa == ui_Principal2){
+    if (pantalla_activa == ui_Principal){
         actualizarValoresPantallaPrincipal();
+    }
+    else if (pantalla_activa == ui_Apagado){
+      actualizarValoresPantallaApagado();
     }
     else if (pantalla_activa == ui_ConfiguracionesUsuario){
       actualizarValoresConfiguracionesUsuario();
@@ -270,9 +276,23 @@ void actualizarValores(){
     }
     else if (pantalla_activa == ui_Alertas){
       actualizarValoresPantallaAlertas();
+      if (*causaAlarmaUI != NO_FALLA){
+        if (configuracionesUI->encendidoOn){
+          lv_disp_load_scr(ui_Principal);
+        } else {
+          lv_disp_load_scr(ui_Apagado);
+        }
+      }
+    }  
+    else if (pantalla_activa == ui_Alarmas){
+      actualizarValoresPantallaAlarmas();
     }  
    else if (pantalla_activa == ui_Inicio){
-      lv_disp_load_scr(ui_Principal2);
+      if (configuracionesUI->encendidoOn){
+        lv_disp_load_scr(ui_Principal);
+      } else {
+        lv_disp_load_scr(ui_Apagado);
+      }
     }  
 
 
@@ -286,24 +306,24 @@ void actualizarValoresPantallaPrincipal(){
   if (*causaAlarmaUI != FALLA_SENSOR_1 && *estadoControlUI != ENCENDIDO_ACS && *estadoControlUI != APAGADO && valorSensoresUI[PT100_1] != VALOR_ERROR_SENSOR){
     snprintf(buffer, sizeof(buffer), "%.1f °C", valorSensoresUI[PT100_1]);
     lv_label_set_text(ui_LabelTemperatura, buffer);
-    lv_arc_set_value(ui_ArcTemp2, valorSensoresUI[PT100_1]);
+    lv_arc_set_value(ui_ArcTemperatura, valorSensoresUI[PT100_1]);
   } else if (*estadoControlUI == ENCENDIDO_ACS){
     snprintf(buffer, sizeof(buffer), "%.1f °C", valorSensoresUI[PT100_2]);
     lv_label_set_text(ui_LabelTemperatura, buffer);
-    lv_arc_set_value(ui_ArcTemp2, valorSensoresUI[PT100_2]);
+    lv_arc_set_value(ui_ArcTemperatura, valorSensoresUI[PT100_2]);
   } else {
     snprintf(buffer, sizeof(buffer), "--- °C");
     lv_label_set_text(ui_LabelTemperatura, buffer);
-    lv_arc_set_value(ui_ArcTemp2, 0);
+    lv_arc_set_value(ui_ArcTemperatura, 0);
   }
 
   // VALOR DE PRESION
   if (*estadoControlUI != APAGADO){
     snprintf(buffer, sizeof(buffer), "%.1f psi", valorSensoresUI[LOOP_CORRIENTE]);
-    lv_label_set_text(ui_LabelPresion2, buffer);
+    lv_label_set_text(ui_LabelPresion, buffer);
   } else {
     snprintf(buffer, sizeof(buffer), "--- psi", valorSensoresUI[LOOP_CORRIENTE]);
-    lv_label_set_text(ui_LabelPresion2, buffer);
+    lv_label_set_text(ui_LabelPresion, buffer);
   }
 
   // INDICADORES CALEFACCION Y ACS
@@ -333,6 +353,31 @@ void actualizarValoresPantallaPrincipal(){
     lv_obj_add_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN);
   }
 
+  if (configuracionesUI->diagnosticoOn == false && !lv_obj_has_flag(ui_LabelDiagnosticoPrincipal, LV_OBJ_FLAG_HIDDEN)){
+    lv_obj_add_flag(ui_LabelDiagnosticoPrincipal, LV_OBJ_FLAG_HIDDEN);
+  }
+
+  // BOTON PARA HISTORIAL DE ALARMAS
+  if (alarmasUI[0] != 0  && lv_obj_has_flag(ui_PanelAlarmas, LV_OBJ_FLAG_HIDDEN)){
+    lv_obj_clear_flag(ui_PanelAlarmas, LV_OBJ_FLAG_HIDDEN);
+  } else if (alarmasUI[0] == 0  && !lv_obj_has_flag(ui_PanelAlarmas, LV_OBJ_FLAG_HIDDEN)){
+    lv_obj_add_flag(ui_PanelAlarmas, LV_OBJ_FLAG_HIDDEN);
+  }
+
+}
+
+void actualizarValoresPantallaApagado(){
+  
+  // BOTON PARA PANTALLA DE ALARMA
+  if (*causaAlarmaUI != NO_FALLA && lv_obj_has_flag(ui_ButtonAlarma2, LV_OBJ_FLAG_HIDDEN)){
+    lv_obj_clear_flag(ui_ButtonAlarma2, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(ui_LabelError, obtenerLabelAlarma(*causaAlarmaUI));
+    lv_label_set_text(ui_LabelAclaracion, obtenerLabelAclaracionAlarma(*causaAlarmaUI));
+  }
+
+  if (*causaAlarmaUI == NO_FALLA && !lv_obj_has_flag(ui_ButtonAlarma2, LV_OBJ_FLAG_HIDDEN)){
+    lv_obj_add_flag(ui_ButtonAlarma2, LV_OBJ_FLAG_HIDDEN);
+  }
 }
 
 void actualizarValoresConfiguracionesUsuario(){
@@ -374,8 +419,11 @@ void actualizarValoresPantallaAlertas(){
   
 }
 
-void actualizarValoresConfiguracionesAvanzadas(){
+void actualizarValoresPantallaAlarmas(){
 
+}
+
+void actualizarValoresConfiguracionesAvanzadas(){
 }
 
 const char* obtenerLabelAlarma(causaAlarma_t causa){
@@ -384,7 +432,7 @@ const char* obtenerLabelAlarma(causaAlarma_t causa){
       return "ENCENDIDO BOMBA CALEFACCION";
       break;
     case BOMBA_AGUA_CALIENTE_ON:    
-      return "ENCENDIDO BOMBA AGUA CALIENTE";
+      return "ENCENDIDO BOMBA ACS";
       break; 
     case BOMBAS_OFF:
       return "APAGADO DE BOMBAS";
@@ -413,16 +461,20 @@ const char* obtenerLabelAlarma(causaAlarma_t causa){
     case FALLA_SENSOR_2:
       return "FALLA SENSOR AGUA CALIENTE";
       break;
+    case FALLA_SENSOR_I:
+      return "FALLA SENSOR DE PRESION";
+      break;
+    default: "";
   }
 }
 
 const char* obtenerLabelAclaracionAlarma(causaAlarma_t causa){
   switch (causa){
     case BOMBA_CALEFACCION_ON:  
-      return "Fallo al encender la bomba del circuito de calefaccion. Resolver y resetear";
+      return "Fallo al encender la bomba del circuito de calefaccion. Resetear y si vuevlve a ocurrir llamar al tecnico";
       break;
     case BOMBA_AGUA_CALIENTE_ON:  
-      return "Fallo al encender la bomba del circuito de agua caliente sanitaria. Resolver y resetear";
+      return "Fallo al encender la bomba del circuito de agua caliente sanitaria. Resetear y si vuevlve a ocurrir llamar al tecnico";
       break;
     case BOMBAS_OFF:
       return "Fallo al encender apagar la bomba. Resetear y si vuevlve a ocurrir llamar al tecnico";
@@ -451,5 +503,9 @@ const char* obtenerLabelAclaracionAlarma(causaAlarma_t causa){
     case FALLA_SENSOR_2:
       return "Llamar al tecnico para cambiar el sensor de la caldera";
       break;
+    case FALLA_SENSOR_I:
+      return "Llamar al tecnico para cambiar el sensor de presion";
+      break;
+    default: "";
   }
 }
