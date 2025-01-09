@@ -308,6 +308,10 @@ void actualizarEstadoControl(){
             }
             solicitarDesactivarRele(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
             solicitarDesactivarRele(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
+            if (configuracionesControl->diagnosticoOn == true){
+                bool diagnosticoOff = false;
+                guardarConfigsNVS(DIAGNOSTICO_ON, &diagnosticoOff, sizeof(diagnosticoOff));
+            }
         }
     }
 
@@ -457,6 +461,11 @@ void actualizarEstadoAlarma(){
                 
             }
             break;
+
+        case FALLA_SENSOR_I:
+            if(valorSensoresControl[LOOP_CORRIENTE] != VALOR_ERROR_SENSOR){
+                causaAlarma = NO_FALLA;
+            }
     }
     
 }
