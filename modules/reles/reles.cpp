@@ -138,7 +138,7 @@ void desactivarEtapa(int numeroRele, bool contarTiempo, int64_t tiempoLimite){
 
 void forzarFalla(){
   pinMode(pinesReles[CANT_ETAPAS-1], OUTPUT);
-  digitalWrite(pinesReles[CANT_ETAPAS-1], LOW);
+  digitalWrite(pinesReles[CANT_ETAPAS-1], HIGH);
   estadoEtapas[CANT_ETAPAS-1] = true;
 }
 
