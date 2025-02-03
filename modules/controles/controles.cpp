@@ -149,18 +149,28 @@ void actualizarControles(){
 void solicitarPurgarBomba(int bomba){
     if (bomba == BOMBA_CAL ){
         flagsPurga[0] = !flagsPurga[0];
+        if (flagsPurga[0] == false){
+            solicitarDesactivarRele(ETAPA_5);
+        }
     }
     else if (bomba == BOMBA_ACS){
         flagsPurga[1] = !flagsPurga[1];
+        if (flagsPurga[0] == false){
+            solicitarDesactivarRele(ETAPA_6);
+        }
     }    
 }
 
 void solicitarDiagnosticoEtapa(int etapa, bool encendido){
+
+    if (etapa < 0 || etapa > CANT_ETAPAS - 1){
+        return;
+    }
     if (encendido){
-        solicitarActivarRele(relesDeResistencias[etapa]);
+        solicitarActivarRele(etapa);
     }
     else {
-        solicitarDesactivarRele(relesDeResistencias[etapa]);
+        solicitarDesactivarRele(etapa);
     }
 }
 
@@ -632,20 +642,14 @@ void verificarFalla(){
     if (estadoEntradasControl[FLOW_SW_BOMBAS] == HIGH && tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] >= TIEMPO_BOMBA_CAL_MS
         &&  etapasControl[ETAPA_5] == HIGH && tiempoEncendidoEtapasControl[ETAPA_5] >= TIEMPO_BOMBA_CAL_MS
         && causaAlarma != BOMBA_CALEFACCION_ON){
-
-        // Esto se hace aparte para que en caso de que ya estuviese con alarma, 
-        // apague la bomba igual pero no cambie la causa de la alarma si la otra es mas prioritaria
-        if (obtenerPrioridadAlarma(BOMBA_CALEFACCION_ON) <= obtenerPrioridadAlarma(causaAlarma)){
-            causaAlarma = BOMBA_CALEFACCION_ON;
-        }
         
         guardarAlarmaNVS((int32_t) BOMBA_CALEFACCION_ON);
-
+        
         // Apago el circuito de calefaccion
         bool val = false;
         guardarConfigsNVS(CALEFACCION_ON, &val, sizeof(val));
         desactivarEtapa(ETAPA_5, true, TIEMPO_APAGADO_BOMBAS_MS);
-        
+
         // Si ya habia fallado la otra bomba, paso al fallo de las dos
         if (causaAlarma == BOMBA_AGUA_CALIENTE_ON){
             causaAlarma = BOMBAS_ON;
@@ -655,6 +659,13 @@ void verificarFalla(){
             solicitarActivarAlarma();
             estadoControl = ALARMA;
         }
+
+        // Esto se hace aparte para que en caso de que ya estuviese con alarma, 
+        // apague la bomba igual pero no cambie la causa de la alarma si la otra es mas prioritaria
+        if (obtenerPrioridadAlarma(BOMBA_CALEFACCION_ON) <= obtenerPrioridadAlarma(causaAlarma)){
+            causaAlarma = BOMBA_CALEFACCION_ON;
+        }
+        
     } 
 
     // Si no hay flujo en ninguna bomba, pero la bomba de agua caliente esta encendida, hay fallo en la bomba de agua caliente 
@@ -662,23 +673,8 @@ void verificarFalla(){
     if (estadoEntradasControl[FLOW_SW_BOMBAS] == HIGH && tiempoEstadoEntradasControl[FLOW_SW_BOMBAS] >= TIEMPO_BOMBA_ACS_MS
         &&  etapasControl[ETAPA_6] == HIGH && tiempoEncendidoEtapasControl[ETAPA_6] >= TIEMPO_BOMBA_ACS_MS
         && causaAlarma != BOMBA_AGUA_CALIENTE_ON){
-
-        if (obtenerPrioridadAlarma(BOMBA_AGUA_CALIENTE_ON) <= obtenerPrioridadAlarma(causaAlarma)){
-            causaAlarma = BOMBA_AGUA_CALIENTE_ON;
-        }
-
+        
         guardarAlarmaNVS((int32_t) BOMBA_AGUA_CALIENTE_ON);
-        
-        // Apago el sistema de acs
-        acsOn = false;
-        desactivarEtapa(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
-
-        // Esto se hace porque si falla cuando estaba en ACS, se vuelve al idle, 
-        // pero si fallo porque alguna alarma la encendio, se debe quedar en estado de alarma
-        if (estadoControl != ALARMA){
-            estadoControl = ENCENDIDO_IDLE;
-        }
-        
         
         // Si ya habia fallado la otra bomba, paso al fallo de las dos
         if (causaAlarma == BOMBA_CALEFACCION_ON){
@@ -688,6 +684,19 @@ void verificarFalla(){
             // Enciendo la alarma
             solicitarActivarAlarma();
             estadoControl = ALARMA;
+        }
+        // Apago el sistema de acs
+        acsOn = false;
+        desactivarEtapa(ETAPA_6, true, TIEMPO_APAGADO_BOMBAS_MS);
+
+        // Esto se hace porque si falla cuando estaba en ACS, se vuelve al idle, 
+        // pero si fallo porque alguna alarma la encendio, se debe quedar en estado de alarma
+        if (estadoControl != ALARMA){
+            estadoControl = ENCENDIDO_IDLE;
+        }
+
+        if (obtenerPrioridadAlarma(BOMBA_AGUA_CALIENTE_ON) <= obtenerPrioridadAlarma(causaAlarma)){
+            causaAlarma = BOMBA_AGUA_CALIENTE_ON;
         }
 
     }
@@ -944,10 +953,11 @@ void actualizarMantenimiento(){
 
 void purgarBomba(int bomba){
     static uint64_t contadorEspera[2] = {0,0};
+    int contador;
+
     if (bomba != BOMBA_CAL && bomba != BOMBA_ACS){
         return;
     }
-
     if (bomba == BOMBA_CAL){
         contador = 0;
     } else {

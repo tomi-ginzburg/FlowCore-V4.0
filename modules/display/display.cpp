@@ -231,8 +231,9 @@ void inicializarValoresDiagnostico(){
 		lv_obj_add_flag(ui_BotonEtapa2, LV_OBJ_FLAG_CLICKABLE);
 		lv_obj_add_flag(ui_BotonEtapa3, LV_OBJ_FLAG_CLICKABLE);
 		lv_obj_add_flag(ui_BotonEtapa4, LV_OBJ_FLAG_CLICKABLE);
-		lv_obj_add_flag(ui_BotonPurga, LV_OBJ_FLAG_CLICKABLE);
-		lv_obj_add_flag(ui_BotonPurga1, LV_OBJ_FLAG_CLICKABLE);
+		lv_obj_add_flag(ui_BotonEtapa5, LV_OBJ_FLAG_CLICKABLE);
+		lv_obj_add_flag(ui_BotonEtapa6, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(ui_ButtonPurga, LV_OBJ_FLAG_CLICKABLE);
   } else {
     lv_obj_add_flag(ui_LabelDiagnosticoPrincipal, LV_OBJ_FLAG_HIDDEN);
   }
@@ -276,7 +277,7 @@ void actualizarValores(){
     }
     else if (pantalla_activa == ui_Alertas){
       actualizarValoresPantallaAlertas();
-      if (*causaAlarmaUI != NO_FALLA){
+      if (*causaAlarmaUI == NO_FALLA){
         if (configuracionesUI->encendidoOn){
           lv_disp_load_scr(ui_Principal);
         } else {
@@ -471,16 +472,12 @@ const char* obtenerLabelAlarma(causaAlarma_t causa){
 const char* obtenerLabelAclaracionAlarma(causaAlarma_t causa){
   switch (causa){
     case BOMBA_CALEFACCION_ON:  
-      return "Fallo al encender la bomba del circuito de calefaccion. Resetear y si vuevlve a ocurrir llamar al tecnico";
-      break;
-    case BOMBA_AGUA_CALIENTE_ON:  
-      return "Fallo al encender la bomba del circuito de agua caliente sanitaria. Resetear y si vuevlve a ocurrir llamar al tecnico";
+    case BOMBA_AGUA_CALIENTE_ON: 
+    case BOMBAS_ON: 
+      return "Fallo al encender la bomba. Resetear y si vuevlve a ocurrir llamar al tecnico";
       break;
     case BOMBAS_OFF:
-      return "Fallo al encender apagar la bomba. Resetear y si vuevlve a ocurrir llamar al tecnico";
-      break;
-    case BOMBAS_ON:
-      return "Fallo al encender ambas bombas. Resetear y si vuevlve a ocurrir llamar al tecnico";
+      return "Fallo al apagar las bombas. Resetear y si vuevlve a ocurrir llamar al tecnico";
       break;
     case PRESION_ALTA:
       return "Se detecto presion alta, se recomienda no usar el equipo";
@@ -489,22 +486,16 @@ const char* obtenerLabelAclaracionAlarma(causaAlarma_t causa){
       return "Se detecto presion baja, se recomienda no usar el equipo";
       break;
     case TEMPERATURA_ALTA:
-      return "Desconectar el equipo y llamar al tecnico";
+    case TERMOSTATO_SEGURIDAD:
+      return "Desconectar el equipo y llamar al tecnico antes de volver a utilizar";
       break;
     case TEMPERATURA_BAJA:
       return "Riesgo de congelamiento";
       break;
-    case TERMOSTATO_SEGURIDAD:
-      return "Desconectar el equipo y llamar al tecnico";
-      break;
     case FALLA_SENSOR_1:
-      return "Llamar al tecnico para cambiar el sensor de la caldera";
-      break;
     case FALLA_SENSOR_2:
-      return "Llamar al tecnico para cambiar el sensor de la caldera";
-      break;
     case FALLA_SENSOR_I:
-      return "Llamar al tecnico para cambiar el sensor de presion";
+      return "Llamar al tecnico para cambiar el sensor";
       break;
     default: "";
   }
