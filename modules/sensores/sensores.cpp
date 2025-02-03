@@ -361,7 +361,7 @@ void cambiarConfiguracionesADC(){
             delayMicroseconds(1);
             spiSensores.transfer(ONE_BYTE);
             delayMicroseconds(1);
-            spiSensores.transfer(MUX_SP_AIN4 | MUX_SN_AIN5);
+            spiSensores.transfer(MUX_SP_AIN5 | MUX_SN_AIN4);
 
             break;
 
