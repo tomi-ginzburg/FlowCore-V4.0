@@ -11,8 +11,7 @@ El sistema será alimentado directamente de la linea eléctrica y luego adaptar�
 1. [Requisitos Previos](#requisitos-previos)  
 2. [Configuración](#configuración)  
 3. [Instalación](#instalación)  
-4. [Uso](#uso)  
-5. [Estructura del Proyecto](#estructura-del-proyecto)  
+4. [Estructura del Proyecto](#estructura-del-proyecto)  
 
 ---
 
@@ -52,9 +51,6 @@ Finalmente se puede hacer el upload del archivo "src/flowcoreV4.ino". Es importa
 
 ---
 
-## Uso
-
----
 ## Estructura del proyecto
 ```
 /
