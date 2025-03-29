@@ -12,7 +12,7 @@ void inicializarBuzzer();
 
 /*
  * pre: -
- * post: 
+ * post: actualiza la maquina de estados del buzzer
  */
 void actualizarBuzzer();
 

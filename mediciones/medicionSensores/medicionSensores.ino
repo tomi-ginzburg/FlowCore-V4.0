@@ -40,14 +40,14 @@ void printeoValoresSensores(void * parameters){
 
         // PRINTEO LOS VALORES
         Serial.print("\n");
-        Serial.print("S1: ");
-        Serial.println(valorSensores_[PT100_1]);
-        Serial.print("S2: ");
-        Serial.println(valorSensores_[PT100_2]);
+        // Serial.print("S1: ");
+        // Serial.println(valorSensores_[PT100_1],3);
+        // Serial.print("S2: ");
+        // Serial.println(valorSensores_[PT100_2]);
         Serial.print("S3: ");
-        Serial.println(valorSensores_[LOOP_CORRIENTE]);
+        Serial.println(valorSensores_[LOOP_CORRIENTE],4);
     }
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 
@@ -55,10 +55,10 @@ void printeoValoresSensores(void * parameters){
     Tomo muestras de las oscilaciones entre dos instantes de control 
     Calculo la media y varianza, y detecta outliers
 */
-#define CANT_MUESTRAS 10000
+#define CANT_MUESTRAS 600
 #define CANT_MUESTRAS_INICIALES 3
-#define MARGEN_TEMPERATURA      1.0   
-#define MARGEN_PRESION          1.0
+#define MARGEN_TEMPERATURA      0.5   
+#define MARGEN_PRESION          0.5
 void medirOscilacionLectura(void * parameters){
     
     float valorSensoresAnteriores_[CANT_SENSORES];
@@ -187,24 +187,31 @@ void medirOscilacionLectura(void * parameters){
             // MEDIA Y VARIANZA
             Serial.print("Sensor ");
             Serial.print(j+1);
+            delay(10);
             Serial.print(" -> Media: ");
-            Serial.print(media[j]);
+            Serial.print(valorMedio[j],4);
+            delay(10);
             Serial.print(", Varianza: ");
-            Serial.print(varianza[j]/CANT_MUESTRAS);
+            Serial.print(varianza[j]/CANT_MUESTRAS,4);
+            delay(10);
 
             // OUTLIERS
             porcentajeErradosTotales = ((float)(valoresFalladosInferiores[j]+valoresFalladosSuperiores[j]))/CANT_MUESTRAS;
             Serial.print(": \nValores errados inferiormente: ");
+            delay(10);
             Serial.print(valoresFalladosInferiores[j]);
             Serial.print("/");
             Serial.print(CANT_MUESTRAS);
             Serial.print("\nValores errados superiormente: ");
+            delay(10);
             Serial.print(valoresFalladosSuperiores[j]);
             Serial.print("/");
             Serial.print(CANT_MUESTRAS);
             Serial.print("\nPorcentaje de error: ");
+            delay(10);
             Serial.print(porcentajeErradosTotales);
             Serial.println("\%\n");
+            delay(10);
 
         xSemaphoreGive(xSemaphore);
         }
@@ -218,8 +225,8 @@ void medirOscilacionLectura(void * parameters){
     Obtengo el valor medio de la temperatura
     A partir de que cambia 10 grados, cuento cuanto tarda en subir otros 20 grados
 */
-#define TEMP_INICIO     10
-#define AUMENTO_TEMP    20
+#define TEMP_INICIO     2
+#define AUMENTO_TEMP    10
 #define SENSOR_MEDIDO   1
 void medirTiempoCambioTemperatura(void * parameters){
     static int valorMedio = 0;
@@ -271,12 +278,12 @@ void medirTiempoCambioTemperatura(void * parameters){
                 Serial.print("Temperatura: ");
                 Serial.print(valorSensores_[SENSOR_MEDIDO-1]);
                 Serial.print(", tiempo= ");
-                Serial.println(timerReadMilis(timer)* 0.001);
+                Serial.println(timerReadMillis(timer)* 0.001);
 
                 // Si llega supera el limite dejo de contar
                 if (valorSensores_[SENSOR_MEDIDO-1] >= valorMedio + TEMP_INICIO + AUMENTO_TEMP){
                     enMedicion = false;
-                    tiempoMedido = timerReadMilis(timer)* 0.001;
+                    tiempoMedido = timerReadMillis(timer)* 0.001;
                     timerEnd(timer);
                     Serial.println("FIN DE LA MEDICION");
                 }
@@ -325,15 +332,15 @@ void setup(){
     attachInterrupt(digitalPinToInterrupt(2), isr_mediciones, FALLING);
 
 
-    xTaskCreate(cicloSensores, "Task 1", 1000, NULL, 1, NULL);
+    xTaskCreate(cicloSensores, "Task 1", 4000, NULL, 1, NULL);
     
     // De los siguientes conjuntos descomentar uno
 
     // 1. Vista de funcionamiento
-    xTaskCreate(printeoValoresSensores, "Task 2", 1000, NULL, 1, NULL);
+    // xTaskCreate(printeoValoresSensores, "Task 2", 4000, NULL, 1, NULL);
         
     // 2. Metricas con los sensores en condiciones estables
-    // xTaskCreate(medirOscilacionLectura, "Task 3", 4000, NULL, 1, NULL);
+    xTaskCreate(medirOscilacionLectura, "Task 3", 4000, NULL, 1, NULL);
 
     // 3. Metrica para cambio de temperatura
     // xTaskCreate(medirTiempoCambioTemperatura, "Task 5", 2000, NULL, 1, NULL);

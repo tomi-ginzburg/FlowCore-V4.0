@@ -7,9 +7,6 @@
 
 #include <lvgl.h>
 #include <TFT_eSPI.h>
-// #include "..\ui\ui.h"
-// // #include "..\ui\ui.c"
-
 #include <ui.h>
 
 // =====[Declaracion de defines privados]============
@@ -23,17 +20,12 @@ enum { SCREENBUFFER_SIZE_PIXELS = screenWidth * screenHeight / 10 };
 static lv_color_t buf [SCREENBUFFER_SIZE_PIXELS];
 
 TFT_eSPI tft = TFT_eSPI( screenWidth, screenHeight ); 
-// TFT_eSprite sprite = TFT_eSprite(&tft);
-
-// const int *estadoEntradasUI;
 const bool *etapasUI;
 const estadoControl_t *estadoControlUI;
 const causaAlarma_t *causaAlarmaUI;
 const float *valorSensoresUI;
 const Configs *configuracionesUI;
 const int32_t *alarmasUI;
-
-SPIClass& spix = SPI;
 
 // =====[Declaracion de funciones privadas]==========
 
@@ -67,7 +59,6 @@ const char* obtenerLabelAclaracionAlarma(causaAlarma_t causa);
 void inicializarDisplay(){
     
     // Obtengo los punteros a variables de otros modulos
-    // estadoEntradasUI = obtenerEstadoEntradasMecanicas();
     etapasUI = obtenerEstadoEtapas();
     estadoControlUI = obtenerEstadoControl();
     causaAlarmaUI = obtenerCausaAlarma();
@@ -78,7 +69,6 @@ void inicializarDisplay(){
     lv_init();
 
     tft.begin();
-    // spix = tft.getSPIinstance();
     tft.setRotation(3);
 
     // Si nunca se calibro, se realiza la calibracion, sino se cargan los valores en memoria
@@ -117,10 +107,6 @@ void actualizarDisplay(int tiempoRefresco_ms){
     contador = 1;
   }
   lv_timer_handler_run_in_period(tiempoRefresco_ms);
-}
-
-SPIClass& obtenerInstanciaSPI(){
-  return spix;
 }
 
 // =====[Implementacion de funciones privadas]=======
@@ -199,11 +185,19 @@ void inicializarValores(){
 }
 
 void inicializarValoresPantallaPrincipal(){
+  // Boton de alarmas de pantalla principal y pantalla apagado tiene que empezar ocultos
   lv_obj_add_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(ui_ButtonAlarma2, LV_OBJ_FLAG_HIDDEN);
+
+  // Si hay una alarma en el historial habilito el boton para verlo
+  if (alarmasUI[0] == 0){ 
+    lv_obj_add_flag(ui_PanelAlarmas, LV_OBJ_FLAG_HIDDEN);
+  }
+
 }
 
 void inicializarValoresConfiguracionesUsuario(){
+  // Veo el estado con el que debe inciar la calefaccion
   if (configuracionesUI->calefaccionOn){
     lv_obj_add_state(ui_ButtonCalefaccion, LV_STATE_CHECKED);
   } else {
@@ -212,17 +206,13 @@ void inicializarValoresConfiguracionesUsuario(){
 }
 
 void inicializarValoresConfiguracionesAvanzadas(){
-
 }
 
 void inicializarValoresAlarmas(){
-  if (alarmasUI[0] == 0){ 
-    lv_obj_add_flag(ui_PanelAlarmas, LV_OBJ_FLAG_HIDDEN);
-  }
-    
 }
 
 void inicializarValoresDiagnostico(){
+  // Si se apago durante un estado diagnostico, se lo vuelvo a habilitar en la pantalla
   if (configuracionesUI->diagnosticoOn){
     lv_obj_add_state(ui_CheckboxDiagnostico, LV_STATE_CHECKED);
 		lv_obj_clear_flag(ui_LabelDiagnosticoPrincipal, LV_OBJ_FLAG_HIDDEN);
@@ -244,59 +234,66 @@ void inicializarValoresDiagnostico(){
 void actualizarValores(){
   lv_obj_t * pantalla_activa = lv_scr_act();
 
-    static causaAlarma_t alarmaAnterior = NO_FALLA;
+  static causaAlarma_t alarmaAnterior = NO_FALLA;
 
-    // SI EL CONTROL DETECTA UNA ALARMA, CAMBIO LA PANTALLA
-    if ( *causaAlarmaUI != alarmaAnterior ){
+  // Si detecto una alarma y no es la misma que la anterior, cambio a pantalla de alarma
+  if ( *causaAlarmaUI != alarmaAnterior ){
 
-      alarmaAnterior = *causaAlarmaUI;
-      lv_label_set_text(ui_LabelError, obtenerLabelAlarma(*causaAlarmaUI));
-      lv_label_set_text(ui_LabelAclaracion, obtenerLabelAclaracionAlarma(*causaAlarmaUI));
-      if (*causaAlarmaUI != NO_FALLA){
-        // Si es por el apagado de las bombas doy la opcion de reset
-        if (*causaAlarmaUI == BOMBAS_OFF || *causaAlarmaUI == BOMBAS_ON){
-              lv_label_set_text(ui_Label12, "Reset");
-        }
-        _ui_screen_change(&ui_Alertas, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Alertas_screen_init);
+    // Actualizo el titulo y la aclaracion
+    alarmaAnterior = *causaAlarmaUI;
+    lv_label_set_text(ui_LabelError, obtenerLabelAlarma(*causaAlarmaUI));
+    lv_label_set_text(ui_LabelAclaracion, obtenerLabelAclaracionAlarma(*causaAlarmaUI));
+
+    // Verifico que el cambio haya sido por una nueva falla y no porque dejo de ocurrir la anterior
+    if (*causaAlarmaUI != NO_FALLA){
+      // Si es por el apagado de las bombas doy la opcion de reset
+      if (*causaAlarmaUI == BOMBAS_OFF || *causaAlarmaUI == BOMBAS_ON){
+            lv_label_set_text(ui_Label12, "Reset");
       }
+      _ui_screen_change(&ui_Alertas, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Alertas_screen_init);
     }
+  }
 
-    // VEO EN QUE PANTALLA ESTOY Y LA ACTUALIZO
+  // VEO EN QUE PANTALLA ESTOY Y LA ACTUALIZO
 
-    if (pantalla_activa == ui_Principal){
-        actualizarValoresPantallaPrincipal();
-    }
-    else if (pantalla_activa == ui_Apagado){
-      actualizarValoresPantallaApagado();
-    }
-    else if (pantalla_activa == ui_ConfiguracionesUsuario){
-      actualizarValoresConfiguracionesUsuario();
-    }
-    else if (pantalla_activa == ui_ConfiguracionesAvanzadas){
-      actualizarValoresConfiguracionesAvanzadas();
-    }
-    else if (pantalla_activa == ui_Alertas){
-      actualizarValoresPantallaAlertas();
-      if (*causaAlarmaUI == NO_FALLA){
-        if (configuracionesUI->encendidoOn){
-          lv_disp_load_scr(ui_Principal);
-        } else {
-          lv_disp_load_scr(ui_Apagado);
-        }
-      }
-    }  
-    else if (pantalla_activa == ui_Alarmas){
-      actualizarValoresPantallaAlarmas();
-    }  
-   else if (pantalla_activa == ui_Inicio){
+  if (pantalla_activa == ui_Principal){
+      actualizarValoresPantallaPrincipal();
+  }
+  else if (pantalla_activa == ui_Apagado){
+    actualizarValoresPantallaApagado();
+  }
+  else if (pantalla_activa == ui_ConfiguracionesUsuario){
+    actualizarValoresConfiguracionesUsuario();
+  }
+  else if (pantalla_activa == ui_ConfiguracionesAvanzadas){
+    actualizarValoresConfiguracionesAvanzadas();
+  }
+  else if (pantalla_activa == ui_Alertas){
+    actualizarValoresPantallaAlertas();
+    // Si finalizó la alarma, vuelvo a la pantalla de inicio
+    if (*causaAlarmaUI == NO_FALLA){
       if (configuracionesUI->encendidoOn){
         lv_disp_load_scr(ui_Principal);
       } else {
         lv_disp_load_scr(ui_Apagado);
       }
-    }  
-
-
+    }
+  }  
+  else if (pantalla_activa == ui_Alarmas){
+    actualizarValoresPantallaAlarmas();
+  }  
+  else if (pantalla_activa == ui_Inicio){
+    // En inicio puedo ir hacia apagado, principal o diagnostico segun en que estado se encontraba antes del reset
+    if ()(configuracionesUI->diagnosticoOn){
+      lv_disp_load_scr(ui_Diagnostico);
+    } else {
+      if (configuracionesUI->encendidoOn){
+        lv_disp_load_scr(ui_Principal);
+      } else {
+        lv_disp_load_scr(ui_Apagado);
+      }
+    }
+  }  
 }
 
 void actualizarValoresPantallaPrincipal(){
@@ -319,7 +316,7 @@ void actualizarValoresPantallaPrincipal(){
   }
 
   // VALOR DE PRESION
-  if (*estadoControlUI != APAGADO){
+  if (*estadoControlUI != APAGADO && valorSensoresUI[LOOP_CORRIENTE] != VALOR_ERROR_SENSOR){
     snprintf(buffer, sizeof(buffer), "%.1f psi", valorSensoresUI[LOOP_CORRIENTE]);
     lv_label_set_text(ui_LabelPresion, buffer);
   } else {
@@ -343,6 +340,7 @@ void actualizarValoresPantallaPrincipal(){
   else if (etapasUI[ETAPA_6] == LOW && lv_image_get_src(ui_ImageAcs) != &ui_img_icono_acs_apagada_png){
     lv_image_set_src(ui_ImageAcs, &ui_img_icono_acs_apagada_png);
   }
+
   // BOTON PARA PANTALLA DE ALARMA
   if (*causaAlarmaUI != NO_FALLA && lv_obj_has_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN)){
     lv_obj_clear_flag(ui_ButtonAlarma, LV_OBJ_FLAG_HIDDEN);
@@ -421,7 +419,6 @@ void actualizarValoresPantallaAlertas(){
 }
 
 void actualizarValoresPantallaAlarmas(){
-
 }
 
 void actualizarValoresConfiguracionesAvanzadas(){

@@ -87,8 +87,6 @@ void inicializarNVS(){
     }
 
     nvs.begin("Alarmas", true);
-    // nvs.begin("Alarmas", false);
-    // nvs.clear();
     for (int i=0; i < CANT_ALARMAS; i++){
         // Creo las claves
         snprintf(clavesAlarma[i], sizeof(clavesAlarma[i]), "alarma%d", i+1);

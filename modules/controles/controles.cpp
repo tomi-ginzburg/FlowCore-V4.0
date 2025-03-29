@@ -11,14 +11,14 @@
 
 // =====[Declaracion de defines privados]============
 
-#define LIMITE_INF_PRESION      1
-#define LIMITE_SUP_PRESION      20
-#define LIMITE_INF_TEMPERATURA  5
-#define LIMITE_SUP_TEMPERATURA  80
-#define TEMPERATURA_EMERGENCIA  95
-#define CANT_RESISTENCIAS       2
-#define CANT_RESISTENCIAS_TOTALES 4
-#define CANT_MUESTRAS_FALLA     3
+#define LIMITE_INF_PRESION          1
+#define LIMITE_SUP_PRESION          20
+#define LIMITE_INF_TEMPERATURA      5
+#define LIMITE_SUP_TEMPERATURA      80
+#define TEMPERATURA_EMERGENCIA      95
+#define CANT_RESISTENCIAS           2
+#define CANT_RESISTENCIAS_TOTALES   4
+#define CANT_MUESTRAS_FALLA         3
 
 // Tiempos para verificar falla
 #define TIEMPO_BOMBA_CAL_MS         10000
@@ -85,34 +85,6 @@ void controlarResistencias();
 void actualizarControlesAlarma();
 void actualizarMantenimiento();
 void purgarBomba(int bomba);
-
-#ifdef TESTING
-void mockingSensores();
-void mockingEntradasMecanicas();
-void test_resistenciasApagadas();
-void test_fallaTermostatoSeguridad_forzarFalla();
-void test_fallaTermostatoSeguridad_verificarTest();
-void test_fallaTemperaturaAlta_forzarFalla();
-void test_fallaTemperaturaAlta_verificarTest();
-void test_fallaTemperaturaBaja_forzarFalla();
-void test_fallaTemperaturaBaja_verificarTest();
-void test_fallaApagadoBombas_forzarFalla();
-void test_fallaApagadoBombas_verificarTest();
-void test_fallaSensorCaldera_forzarFalla();
-void test_fallaSensorCaldera_verificarTest();
-void test_fallaSensorACS_forzarFalla();
-void test_fallaSensorACS_verificarTest();
-void test_fallaEncendidoBombaCalefaccion_forzarFalla();
-void test_fallaEncendidoBombaCalefaccion_verificarTest();
-void test_fallaEncendidoBombaACS_forzarFalla();
-void test_fallaEncendidoBombaACS_verificarTest();
-void test_fallaPresionAlta_forzarFalla();
-void test_fallaPresionAlta_verificarTest();
-void test_fallaPresionBaja_forzarFalla();
-void test_fallaPresionBaja_verificarTest();
-void test_gestionFallas(void (*forzarFalla)(), void (*testearRespuesta)(), const bool* tests = nullptr);
-void test_superposicionFallas(void (*fallaPrimera)(), const bool* tests);
-#endif
 
 // =====[Implementacion de funciones publicas]=======
 
@@ -181,109 +153,6 @@ const estadoControl_t* obtenerEstadoControl(){
 const causaAlarma_t* obtenerCausaAlarma(){
     return &causaAlarma;
 }
-
-#ifdef TESTING
-
-void reiniciarEstadoControles(){
-    estadoControl = APAGADO;
-    causaAlarma = NO_FALLA;
-    mockingSensores();
-    mockingEntradasMecanicas();
-    for (int i=0; i < CANT_ETAPAS - 1; i++){
-        solicitarDesactivarRele(i, false, 0);
-        flagsEtapasDesactivadas[i] = false;
-    }
-    actualizarReles();
-    for (int i = 0; i< CANT_ALARMAS; i++){
-        alarmasControl[i] = 0;
-    }
-    if (configuracionesControl->calefaccionOn == false){
-        bool calOn = true;
-        guardarConfigsNVS(CALEFACCION_ON, &calOn, sizeof(calOn));
-    }
-    if (acsOn == false){
-        acsOn = true;
-    }
-
-    
-}
-
-void test_verificarFallaTermostatoSeguridad(){
-
-    test_gestionFallas(test_fallaTermostatoSeguridad_forzarFalla, test_fallaTermostatoSeguridad_verificarTest);
-    bool pruebasSeleccionadas[] = {false, true, false, true, true, true, true, true, true, true};
-    test_superposicionFallas(test_fallaTermostatoSeguridad_forzarFalla, pruebasSeleccionadas); 
-    
-}
-
-void test_verificarFallaTemperaturaAlta(){
-
-    test_gestionFallas(test_fallaTemperaturaAlta_forzarFalla, test_fallaTemperaturaAlta_verificarTest);
-    bool pruebasSeleccionadas[] = {true, false, false, true, true, true, true, true, true, false};
-    test_superposicionFallas(test_fallaTemperaturaAlta_forzarFalla, pruebasSeleccionadas); 
-}
-
-void test_verificarFallaTemperaturaBaja(){
-
-    test_gestionFallas(test_fallaTemperaturaBaja_forzarFalla, test_fallaTemperaturaBaja_verificarTest);
-    bool pruebasSeleccionadas[] = {false, false, false, true, true, true, true, true, false, true};
-    test_superposicionFallas(test_fallaTemperaturaBaja_forzarFalla, pruebasSeleccionadas); 
-}
-
-void test_verificarFallaApagadoBombas(){
-
-    bool pruebasSeleccionadas[] = {false, true, false, false, true};
-    test_gestionFallas(test_fallaApagadoBombas_forzarFalla, test_fallaApagadoBombas_verificarTest, pruebasSeleccionadas);
-    bool pruebasSeleccionadas2[] = {true, true, true, false, true, true, false, false, true, true};
-    test_superposicionFallas(test_fallaApagadoBombas_forzarFalla, pruebasSeleccionadas2); 
-}
-
-void test_verificarFallaSensorCaldera(){
-
-    test_gestionFallas(test_fallaSensorCaldera_forzarFalla, test_fallaSensorCaldera_verificarTest);
-    bool pruebasSeleccionadas[] = {true, false, false, true, false, true, true, true, true, true};
-    test_superposicionFallas(test_fallaSensorCaldera_forzarFalla, pruebasSeleccionadas); 
-}
-
-void test_verificarFallaSensorACS(){
-
-    test_gestionFallas(test_fallaSensorACS_forzarFalla, test_fallaSensorACS_verificarTest);
-    bool pruebasSeleccionadas[] = {true, true, true, true, true, false, true, false, true, true};
-    test_superposicionFallas(test_fallaSensorACS_forzarFalla, pruebasSeleccionadas); 
-}
-
-void test_verificarFallaEncendidoBombaCalefaccion(){
-    
-    bool pruebasSeleccionadas[] = {false, false, true, false, true};
-    test_gestionFallas(test_fallaEncendidoBombaCalefaccion_forzarFalla, test_fallaEncendidoBombaCalefaccion_verificarTest, pruebasSeleccionadas);
-    bool pruebasSeleccionadas2[] = {true, true, true, true, true, true, false, true, true, true};
-    test_superposicionFallas(test_fallaEncendidoBombaCalefaccion_forzarFalla, pruebasSeleccionadas2); 
-}
-
-void test_verificarFallaEncendidoBombaACS(){
-    
-    bool pruebasSeleccionadas[] = {false, false, false, true, true};
-    test_gestionFallas(test_fallaEncendidoBombaACS_forzarFalla, test_fallaEncendidoBombaACS_verificarTest, pruebasSeleccionadas);
-    bool pruebasSeleccionadas3[] = {true, true, true, true, true, true, true, false, true, true};
-    test_superposicionFallas(test_fallaEncendidoBombaACS_forzarFalla, pruebasSeleccionadas3); 
-}
-
-void test_verificarFallaPresionAlta(){
-
-    test_gestionFallas(test_fallaPresionAlta_forzarFalla, test_fallaPresionAlta_verificarTest);
-    bool pruebasSeleccionadas4[] = {true, true, false, true, true, true, true, true, false, false};
-    test_superposicionFallas(test_fallaPresionAlta_forzarFalla, pruebasSeleccionadas4); 
-}
-
-void test_verificarFallaPresionBaja(){
-
-    test_gestionFallas(test_fallaPresionBaja_forzarFalla, test_fallaPresionBaja_verificarTest);
-    bool pruebasSeleccionadas[] = {true, false, true, true, true, true, true, true, false, false};
-    test_superposicionFallas(test_fallaPresionBaja_forzarFalla, pruebasSeleccionadas); 
-}
-
-#endif
-
 
 // =====[Implementacion de funciones privadas]=======
 
@@ -972,9 +841,138 @@ void purgarBomba(int bomba){
     }
 }
 
-// FUNCIONES AUXILIARES PARA TESTS
 
+// ====TESTING====
 #ifdef TESTING
+
+// =====[Declaracion de funciones privadas]==========
+void mockingSensores();
+void mockingEntradasMecanicas();
+void test_resistenciasApagadas();
+void test_fallaTermostatoSeguridad_forzarFalla();
+void test_fallaTermostatoSeguridad_verificarTest();
+void test_fallaTemperaturaAlta_forzarFalla();
+void test_fallaTemperaturaAlta_verificarTest();
+void test_fallaTemperaturaBaja_forzarFalla();
+void test_fallaTemperaturaBaja_verificarTest();
+void test_fallaApagadoBombas_forzarFalla();
+void test_fallaApagadoBombas_verificarTest();
+void test_fallaSensorCaldera_forzarFalla();
+void test_fallaSensorCaldera_verificarTest();
+void test_fallaSensorACS_forzarFalla();
+void test_fallaSensorACS_verificarTest();
+void test_fallaEncendidoBombaCalefaccion_forzarFalla();
+void test_fallaEncendidoBombaCalefaccion_verificarTest();
+void test_fallaEncendidoBombaACS_forzarFalla();
+void test_fallaEncendidoBombaACS_verificarTest();
+void test_fallaPresionAlta_forzarFalla();
+void test_fallaPresionAlta_verificarTest();
+void test_fallaPresionBaja_forzarFalla();
+void test_fallaPresionBaja_verificarTest();
+void test_gestionFallas(void (*forzarFalla)(), void (*testearRespuesta)(), const bool* tests = nullptr);
+void test_superposicionFallas(void (*fallaPrimera)(), const bool* tests);
+
+// =====[Implementacion de funciones publicas]=======
+
+void reiniciarEstadoControles(){
+    estadoControl = APAGADO;
+    causaAlarma = NO_FALLA;
+    mockingSensores();
+    mockingEntradasMecanicas();
+    for (int i=0; i < CANT_ETAPAS - 1; i++){
+        solicitarDesactivarRele(i, false, 0);
+        flagsEtapasDesactivadas[i] = false;
+    }
+    actualizarReles();
+    for (int i = 0; i< CANT_ALARMAS; i++){
+        alarmasControl[i] = 0;
+    }
+    if (configuracionesControl->calefaccionOn == false){
+        bool calOn = true;
+        guardarConfigsNVS(CALEFACCION_ON, &calOn, sizeof(calOn));
+    }
+    if (acsOn == false){
+        acsOn = true;
+    }
+
+    
+}
+
+void test_verificarFallaTermostatoSeguridad(){
+
+    test_gestionFallas(test_fallaTermostatoSeguridad_forzarFalla, test_fallaTermostatoSeguridad_verificarTest);
+    bool pruebasSeleccionadas[] = {false, true, false, true, true, true, true, true, true, true};
+    test_superposicionFallas(test_fallaTermostatoSeguridad_forzarFalla, pruebasSeleccionadas); 
+    
+}
+
+void test_verificarFallaTemperaturaAlta(){
+
+    test_gestionFallas(test_fallaTemperaturaAlta_forzarFalla, test_fallaTemperaturaAlta_verificarTest);
+    bool pruebasSeleccionadas[] = {true, false, false, true, true, true, true, true, true, false};
+    test_superposicionFallas(test_fallaTemperaturaAlta_forzarFalla, pruebasSeleccionadas); 
+}
+
+void test_verificarFallaTemperaturaBaja(){
+
+    test_gestionFallas(test_fallaTemperaturaBaja_forzarFalla, test_fallaTemperaturaBaja_verificarTest);
+    bool pruebasSeleccionadas[] = {false, false, false, true, true, true, true, true, false, true};
+    test_superposicionFallas(test_fallaTemperaturaBaja_forzarFalla, pruebasSeleccionadas); 
+}
+
+void test_verificarFallaApagadoBombas(){
+
+    bool pruebasSeleccionadas[] = {false, true, false, false, true};
+    test_gestionFallas(test_fallaApagadoBombas_forzarFalla, test_fallaApagadoBombas_verificarTest, pruebasSeleccionadas);
+    bool pruebasSeleccionadas2[] = {true, true, true, false, true, true, false, false, true, true};
+    test_superposicionFallas(test_fallaApagadoBombas_forzarFalla, pruebasSeleccionadas2); 
+}
+
+void test_verificarFallaSensorCaldera(){
+
+    test_gestionFallas(test_fallaSensorCaldera_forzarFalla, test_fallaSensorCaldera_verificarTest);
+    bool pruebasSeleccionadas[] = {true, false, false, true, false, true, true, true, true, true};
+    test_superposicionFallas(test_fallaSensorCaldera_forzarFalla, pruebasSeleccionadas); 
+}
+
+void test_verificarFallaSensorACS(){
+
+    test_gestionFallas(test_fallaSensorACS_forzarFalla, test_fallaSensorACS_verificarTest);
+    bool pruebasSeleccionadas[] = {true, true, true, true, true, false, true, false, true, true};
+    test_superposicionFallas(test_fallaSensorACS_forzarFalla, pruebasSeleccionadas); 
+}
+
+void test_verificarFallaEncendidoBombaCalefaccion(){
+    
+    bool pruebasSeleccionadas[] = {false, false, true, false, true};
+    test_gestionFallas(test_fallaEncendidoBombaCalefaccion_forzarFalla, test_fallaEncendidoBombaCalefaccion_verificarTest, pruebasSeleccionadas);
+    bool pruebasSeleccionadas2[] = {true, true, true, true, true, true, false, true, true, true};
+    test_superposicionFallas(test_fallaEncendidoBombaCalefaccion_forzarFalla, pruebasSeleccionadas2); 
+}
+
+void test_verificarFallaEncendidoBombaACS(){
+    
+    bool pruebasSeleccionadas[] = {false, false, false, true, true};
+    test_gestionFallas(test_fallaEncendidoBombaACS_forzarFalla, test_fallaEncendidoBombaACS_verificarTest, pruebasSeleccionadas);
+    bool pruebasSeleccionadas3[] = {true, true, true, true, true, true, true, false, true, true};
+    test_superposicionFallas(test_fallaEncendidoBombaACS_forzarFalla, pruebasSeleccionadas3); 
+}
+
+void test_verificarFallaPresionAlta(){
+
+    test_gestionFallas(test_fallaPresionAlta_forzarFalla, test_fallaPresionAlta_verificarTest);
+    bool pruebasSeleccionadas4[] = {true, true, false, true, true, true, true, true, false, false};
+    test_superposicionFallas(test_fallaPresionAlta_forzarFalla, pruebasSeleccionadas4); 
+}
+
+void test_verificarFallaPresionBaja(){
+
+    test_gestionFallas(test_fallaPresionBaja_forzarFalla, test_fallaPresionBaja_verificarTest);
+    bool pruebasSeleccionadas[] = {true, false, true, true, true, true, true, true, false, false};
+    test_superposicionFallas(test_fallaPresionBaja_forzarFalla, pruebasSeleccionadas); 
+}
+
+// =====[Implementacion de funciones privadas]=======
 
 void mockingSensores(){
     valorSensoresControl[PT100_1] = 25;

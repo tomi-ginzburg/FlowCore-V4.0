@@ -22,8 +22,10 @@ extern "C" {
 #include "lvgl.h"
 #endif
 
+// --- Las 2 lineas siguientes deben ser reemplazadas con la ubicacion correcta de los modulos
 #include "G:\Mi unidad\FLOWING\FLOWCORE V4\FlowCore-V4.0\modules\NVS\NVS.h"
 #include "G:\Mi unidad\FLOWING\FLOWCORE V4\FlowCore-V4.0\modules\controles\controles.h"
+// -------------------------------------------------------------------------------------------
 
 #include "ui_helpers.h"
 #include "ui_events.h"

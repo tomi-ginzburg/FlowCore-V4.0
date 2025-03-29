@@ -28,6 +28,7 @@
 #define SENSORES_I_SW   1   // IN multiplexor
 
 #define RESOLUCION      16
+#define GAIN            4
 
 #define CANT_MUESTRAS   6
 #define CANT_MEDICIONES_ERRADAS 5
@@ -150,8 +151,8 @@ void inicializarSensores(){
     
     /* CONFIGURACIONES INICIALES QUE LUEGO NO MODIFICO
     *  - Configuro el valor de las IDACs en 1mA
-    *  - Configuro la IDAC1 en AIN0
-    *  - Configuro la IDAC2 en AIN1
+    *  - Configuro la IDAC1 en AIN6
+    *  - Configuro la IDAC2 en AIN7
     *  - Autocalibracion del offset
     */
 
@@ -426,12 +427,12 @@ void actualizarEstadoSensores(){
 }
 
 float conversionResistencia(float valorADC, tecnologiaSensor_t tecnologiaSensor){
-    static int N = pow(2,RESOLUCION) - 1;
+    static int N = pow(2, RESOLUCION - 2);
     float resistencia; 
 
     switch (tecnologiaSensor){
         case RTD: 
-            resistencia = (valorADC * RREF_RTD)/ N;
+            resistencia = (valorADC * RREF_RTD)/ (N * GAIN);
             break;
     }
 
@@ -452,7 +453,8 @@ float conversionTemperatura(float valorResistencia, tecnologiaSensor_t tecnologi
 }
 
 float conversionCorriente(float valorADC){
-    return (valorADC*2048.0*2)/(pow(2,16)*RREF_4_20);
+    static int N = pow(2, RESOLUCION - 1);
+    return (valorADC*2048.0)/(N*RREF_4_20);
 }
 
 float conversionPresion(float valorCorriente){
