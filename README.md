@@ -4,7 +4,22 @@
 El sistema será alimentado directamente de la linea eléctrica y luego adaptará las tensiones necesarias para el resto del circuito. El microcontrolador tendrá a cargo la gestión del sistema. Por un lado, recibirá los datos a través de los adaptadores que serán los encargados de acondicionar las mediciones para una correcta lectura en el microcontrolador. Luego de procesarlos, hará uso de los actuadores para la ejecución de las acciones de control. Finalmente, intercambiará datos a través de la interfaz de usuario tanto para configuraciones, como para exhibir el estado del control. 
 </p>
 
-<img src="img/Diagrama de bloques.png" alt="Diagrama de bloques" width="100%">
+<img src="img/Diagrama de bloques.png" alt="Diagrama de bloques" width="75%">
+
+<p align="justify">
+En la arquitectura del firmware del sistema se adoptó un diseño modular. Cada componente cumple una función especifica, ya sea asociada al control de una unidad de hardware o al procesamiento y gestión de datos.
+
+Las unidades del bloque de entradas entradas realizan mediciones periódicamente y almacenan los valores obtenidos. Luego, los módulos pertenecientes a procesamiento, toman dichos datos para analizarlos y determinar las acciones necesarias para el funcionamiento optimo del sistema.  Estas decisiones se comunican al bloque de salidas, responsable de llevar a cabo la ejecución. Por último, tanto entradas, salidas como procesamiento, hacen uso de la unidad de soporte, que proporciona funcionalidades auxiliares esenciales para el sistema. 
+</p>
+
+<img src="img/Modulos software.png" alt="Diagrama de módulos de software" width="75%">
+
+cada funcionalidad del sistema ha sido encapsulada en una tarea específica dentro de FreeRTOS.
+
+<img src="img/Diagrama de flujo - Detalle.png" alt="Gestion de tareas RTOS" width="75%">
+
+Para mas detalle se puede leer el informe.
+
 
 ## Tabla de Contenidos
 
