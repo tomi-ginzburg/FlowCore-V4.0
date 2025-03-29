@@ -2,7 +2,7 @@
 
 El sistema será alimentado directamente de la linea eléctrica y luego adaptará las tensiones necesarias para el resto del circuito. El microcontrolador tendrá a cargo la gestión del sistema. Por un lado, recibirá los datos a través de los adaptadores que serán los encargados de acondicionar las mediciones para una correcta lectura en el microcontrolador. Luego de procesarlos, hará uso de los actuadores para la ejecución de las acciones de control. Finalmente, intercambiará datos a través de la interfaz de usuario tanto para configuraciones, como para exhibir el estado del control. 
 
-<img src="https://drive.google.com/file/d/1O7V93FvNrJl5DXC5_-epJ0WdQBupi5uY/view?usp=sharing" alt="Ejemplo de imagen" width="300">
+<img src="img/Diagrama de bloques.png" alt="Texto alternativo" width="300">
 
 ## Tabla de Contenidos
 
