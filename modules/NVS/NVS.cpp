@@ -1,4 +1,5 @@
 #include "NVS.h"
+#include "../MQTTManager/MQTTManager.h"
 
 #include <Preferences.h>
 
@@ -104,26 +105,34 @@ void inicializarNVS(){
 }
 
 void guardarConfigsNVS(ConfigID id, void* valor, size_t largoDato){
-    
     nvs.begin("Configs", false);
 
     switch (parametros[id].tipo){
         case PT_U8:
             nvs.putUChar(parametros[id].clave, *(uint8_t*)valor);
             *(bool*)(parametros[id].miembro) = *(bool*)valor;
+            Serial.printf("[NVS] Guardado U8: %s = %d\n", parametros[id].clave, *(uint8_t*)valor);
             break;
         case PT_BLOB:
             nvs.putBytes(parametros[id].clave, valor, largoDato);
             memcpy(parametros[id].miembro, valor, largoDato);
+            Serial.printf("[NVS] Guardado BLOB: %s = ", parametros[id].clave);
+            for (size_t i = 0; i < largoDato; i++) {
+                Serial.printf("%02X ", ((uint8_t*)valor)[i]);
+            }
+            Serial.println();
             break;
         case PT_U16:
             nvs.putUShort(parametros[id].clave, *(uint16_t*)valor);
             *(uint16_t*)(parametros[id].miembro) = *(uint16_t*)valor;
+            Serial.printf("[NVS] Guardado U16: %s = %u\n", parametros[id].clave, *(uint16_t*)valor);
             break;
     }
 
     nvs.end();
+    publicarConfiguracionesMQTT();
 }
+
 
 void guardarAlarmaNVS(int32_t causa){
     
@@ -140,7 +149,7 @@ void guardarAlarmaNVS(int32_t causa){
         nvs.putInt(clavesAlarma[i], alarmas[i]);
     }
     nvs.end();
-    
+    // publicarAlarmasMQTT();
 }
 
 void borrarAlarmasNVS(){

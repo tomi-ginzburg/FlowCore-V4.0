@@ -9,7 +9,7 @@
 ///////////////////// VARIABLES ////////////////////
 
 const struct Configs *configuracionesUI_ = &configuraciones;
-const int32_t *alarmasUI_ = &alarmas;
+const int32_t *alarmasUI_ = alarmas;
 const estadoControl_t* estadoControlUI_;
 
 
@@ -218,14 +218,26 @@ const lv_image_dsc_t * ui_imgset_logo_flowing_blanco[1] = {&ui_img_logo_flowing_
 void ui_event_ButtonEncendidoGrande(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
+
+    Serial.println("Entró a ui_event_ButtonEncendidoGrande");
+
     if(event_code == LV_EVENT_CLICKED) {
+
+        Serial.println("======= INFO CAMBIAR ESTADO CALDERA =======");
+        Serial.printf("Encendido actual: %d\n", configuracionesUI_->encendidoOn);
+        Serial.printf("Calefaccion actual: %d\n", configuracionesUI_->calefaccionOn);
+        Serial.printf("Temp ACS: %.2f\n", configuracionesUI_->temperaturaACS);
+        Serial.printf("Temp Calefaccion: %.2f\n", configuracionesUI_->temperaturaCalefaccion);
+        Serial.println("===========================================");
+
         CambiarEstadoCaldera(e);
         _ui_screen_change(&ui_Principal, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Principal_screen_init);
     }
 }
+
 void ui_event_ButtonAlarma2(lv_event_t * e)
 {
+    Serial.println("Entró a ui_event_ButtonAlarma2");
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
@@ -234,6 +246,7 @@ void ui_event_ButtonAlarma2(lv_event_t * e)
 }
 void ui_event_ButtonReset(lv_event_t * e)
 {
+    Serial.println("Entró a ui_event_ButtonAlarma2");
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
@@ -242,6 +255,7 @@ void ui_event_ButtonReset(lv_event_t * e)
 }
 void ui_event_Principal(lv_event_t * e)
 {
+    Serial.println("Entró a ui_event_Principal");
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_SCREEN_LOADED) {
@@ -250,6 +264,7 @@ void ui_event_Principal(lv_event_t * e)
 }
 void ui_event_PanelConfiguraciones(lv_event_t * e)
 {
+    Serial.println("Entró a ui_event_PanelConfiguraciones");
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
@@ -258,6 +273,7 @@ void ui_event_PanelConfiguraciones(lv_event_t * e)
 }
 void ui_event_ButtonAlarma(lv_event_t * e)
 {
+    Serial.println("Entró a ui_event_ButtonAlarma");
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
@@ -266,9 +282,17 @@ void ui_event_ButtonAlarma(lv_event_t * e)
 }
 void ui_event_ButtonEncendido(lv_event_t * e)
 {
+    Serial.println("Entró a ui_event_ButtonEncendido");
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
+        Serial.println("======= INFO CAMBIAR ESTADO CALDERA =======");
+        Serial.printf("Encendido actual: %d\n", configuracionesUI_->encendidoOn);
+        Serial.printf("Calefaccion actual: %d\n", configuracionesUI_->calefaccionOn);
+        Serial.printf("Temp ACS: %.2f\n", configuracionesUI_->temperaturaACS);
+        Serial.printf("Temp Calefaccion: %.2f\n", configuracionesUI_->temperaturaCalefaccion);
+        Serial.println("===========================================");
+
         CambiarEstadoCaldera(e);
         _ui_screen_change(&ui_Apagado, LV_SCR_LOAD_ANIM_NONE, 0, 0, &ui_Apagado_screen_init);
     }
@@ -278,6 +302,7 @@ void ui_event_ButtonEncendido(lv_event_t * e)
 }
 void ui_event_PanelAlarmas(lv_event_t * e)
 {
+    Serial.println("Entró a ui_event_PanelAlarmas");
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_CLICKED) {
@@ -286,6 +311,7 @@ void ui_event_PanelAlarmas(lv_event_t * e)
 }
 void ui_event_Alarmas(lv_event_t * e)
 {
+    Serial.println("Entró a ui_event_Alarmas");
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_GESTURE &&  lv_indev_get_gesture_dir(lv_indev_active()) == LV_DIR_BOTTOM) {
@@ -608,6 +634,7 @@ void ui_event_CheckboxDiagnostico(lv_event_t * e)
 
 void ui_init(void)
 {
+    Serial.println("Entró a ui_init");
     lv_disp_t * dispp = lv_display_get_default();
     lv_theme_t * theme = lv_theme_default_init(dispp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
                                                false, LV_FONT_DEFAULT);

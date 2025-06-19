@@ -25,6 +25,9 @@
 #include "../../modules/display/display.h"
 #include "../../modules/display/display.cpp"
 
+#include "../../modules/MQTTManager/MQTTManager.h"
+#include "../../modules/MQTTManager/MQTTManager.cpp"
+
 //--------------------------------------------
 
 #include <WebServer.h>  // Primero WebServer
@@ -32,7 +35,12 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
+<<<<<<< Updated upstream
 #define TIMEPO_REFRESCO_DISPLAY_MS 10
+=======
+#define TIMEPO_REFRESCO_DISPLAY_MS  10
+#define ARDUINO_USB_CDC_ON_BOOT 1
+>>>>>>> Stashed changes
 
 SemaphoreHandle_t xSemaphore, isrSemaphore, initSemaphore;
 
@@ -106,6 +114,7 @@ void setup_wifi() {
     ESP.restart();
   }
 
+<<<<<<< Updated upstream
   Serial.println("Conexión Wi-Fi establecida.");
   Serial.print("Dirección IP: ");
   Serial.println(WiFi.localIP());
@@ -209,3 +218,58 @@ void setup() {
 
 void loop() {
 }
+=======
+void setup(){
+    Serial.begin(115200);
+    delay(1000);
+    Serial.println("FUNCIONA!!");
+    // // Serial.println(tickRate);
+    // // time_meter_us_init();
+    
+    xSemaphore = xSemaphoreCreateCounting(CICLOS_PT100_1+CICLOS_PT100_2+CICLOS_LOOP_I+1,CICLOS_PT100_1+CICLOS_PT100_2+CICLOS_LOOP_I+1);
+    isrSemaphore = xSemaphoreCreateBinary();
+    initSemaphore = xSemaphoreCreateBinary();
+
+    // if (xSemaphore == NULL || isrSemaphore == NULL) {
+    //     Serial.println("Error al crear semáforo.");
+    //     while(1);
+    // }
+
+    // pinMode(42, OUTPUT);
+    // digitalWrite(42,HIGH);
+    // pinMode(21,OUTPUT);
+    // digitalWrite(21,HIGH);
+    // pinMode(11,OUTPUT);
+    // digitalWrite(11,HIGH);
+
+    inicializarNVS();
+    inicializarMQTT();
+    inicializarSensores(); 
+    inicializarDisplay();
+    
+    inicializarEntradasMecanicas();
+    inicializarReles();
+
+    inicializarBuzzer();
+    inicializarControles();
+                                                                              
+    inicializarContador();
+
+    attachInterrupt(digitalPinToInterrupt(2), isr_mediciones, FALLING);
+    // attachInterrupt(digitalPinToInterrupt(36), isr_mediciones, FALLING); // Pin de entrada de sensado de termostato de seguridad
+
+    size_t totalHeap = ESP.getHeapSize();
+    size_t freeHeap = xPortGetFreeHeapSize();
+
+    // Serial.printf("Total Heap Size: %d bytes\n", totalHeap);
+    // Serial.printf("Free Heap Size: %d bytes\n", freeHeap);
+    
+    xTaskCreate(medir, "Task 1", 4000, NULL, 3, NULL);
+    xTaskCreate(controlar, "Task 2", 5000, NULL, 2, NULL);
+    xTaskCreate(presentar, "Task 3", 50000, NULL, 1, NULL);
+}
+
+void loop(){
+  mqttLoop();
+}
+>>>>>>> Stashed changes
